@@ -1,6 +1,6 @@
 // Notenliste – Service Worker: App offline verfügbar, Updates im Hintergrund.
 // Beim Veröffentlichen einer neuen Version VERSION erhöhen.
-const VERSION = 'notenliste-v3';
+const VERSION = 'notenliste-v4';
 const DATEIEN = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(DATEIEN)).then(() => self.skipWaiting()));

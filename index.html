@@ -177,6 +177,7 @@ body.druckmodus #druck td.l,body.druckmodus #druck th.l{text-align:left}
     <button data-seite="uebersicht" class="aktiv">Übersicht</button>
     <button data-seite="nachweise">Leistungsnachweise</button>
     <button data-seite="schueler">Schüler</button>
+    <button data-seite="schluesselrechner">Notenschlüssel</button>
     <button data-seite="daten">Daten &amp; Einstellungen</button>
   </nav>
   <span id="status"></span>
@@ -235,6 +236,19 @@ body.druckmodus #druck td.l,body.druckmodus #druck th.l{text-align:left}
   <section id="schueler" class="seite"></section>
 
   <!-- Daten -->
+  <section id="schluesselrechner" class="seite">
+    <div class="karte" style="max-width:980px">
+      <h2>Notenschlüssel erstellen</h2>
+      <p>Gesamtpunktzahl eintragen und Schlüssel wählen. Die Tabelle zeigt, ab wie vielen BE es welche Notenpunkte gibt – genau wie bei den Leistungsnachweisen.</p>
+      <div class="zeile" style="gap:14px;margin-top:10px;align-items:flex-end">
+        <label class="feld" style="width:150px">Gesamtpunktzahl (BE)<input id="nsBE" inputmode="decimal" placeholder="z. B. 48"></label>
+        <label class="feld" style="min-width:220px">Notenschlüssel<select id="nsSchluessel"></select></label>
+        <label class="feld" style="width:170px">Abstufung<select id="nsSchritt"><option value="0.5">halbe BE</option><option value="1">ganze BE</option></select></label>
+        <label class="feld" style="flex:1;min-width:200px">Überschrift (optional)<input id="nsTitel" placeholder="z. B. 2. Schulaufgabe 12S1"></label>
+      </div>
+    </div>
+    <div class="karte" id="nsErgebnis" style="max-width:980px"></div>
+  </section>
   <section id="daten" class="seite"></section>
 </main>
 
@@ -316,17 +330,18 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     return gr ? punkteAusAnteil(summeBE / gesamtBE, gr) : null;
   }
   // Tabelle „ab … BE“ für 15..0 Punkte (wie Spalten U/W)
-  function beTabelle(gesamtBE, schl) {
-    var ab = [];
+  // schritt: 0.5 (halbe BE, wie in der Excel-Liste) oder 1 (ganze BE)
+  function beTabelle(gesamtBE, schl, schritt) {
+    var s = schritt === 1 ? 1 : 0.5, ab = [];
     if (schl && schl.art === 'be') ab = schl.werte.slice();
     else {
       var gr = grenzen(schl, gesamtBE);
       if (!gr || !(gesamtBE > 0)) return null;
-      ab = gr.map(function (z) { return roundUp(2 * z * gesamtBE + 0.001, 0) / 2; });
+      ab = gr.map(function (z) { return roundUp(z * gesamtBE / s + 0.001, 0) * s; });
     }
     var zeilen = [];
-    for (var i = 0; i < 15; i++) zeilen.push({ punkte: 15 - i, note: NOTEN_TEXT[15 - i], ab: ab[i], bis: i === 0 ? (schl && schl.art === 'be' ? null : gesamtBE) : ab[i - 1] - 0.5 });
-    zeilen.push({ punkte: 0, note: '6', ab: 0, bis: ab[14] - 0.5 });
+    for (var i = 0; i < 15; i++) zeilen.push({ punkte: 15 - i, note: NOTEN_TEXT[15 - i], ab: ab[i], bis: i === 0 ? (schl && schl.art === 'be' ? null : gesamtBE) : ab[i - 1] - s });
+    zeilen.push({ punkte: 0, note: '6', ab: 0, bis: ab[14] - s });
     return zeilen;
   }
 
@@ -665,7 +680,9 @@ function zeigeSeite(id){
   document.querySelectorAll('.seite').forEach(s=>s.classList.toggle('aktiv', s.id===id));
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('aktiv', b.dataset.seite===id));
   const hatKurs=!!kurs();
-  $('tabs').hidden = !hatKurs && id!=='daten'; $('kursWahl').hidden = !D.kurse.length;
+  $('tabs').hidden = false; $('kursWahl').hidden = !D.kurse.length;
+  ['uebersicht','nachweise','schueler'].forEach(t=>{ const b=document.querySelector(`#tabs button[data-seite="${t}"]`); if(b) b.hidden=!hatKurs; });
+  if(id==='schluesselrechner') zeigeSchluesselrechner();
   if(id==='uebersicht') zeigeUebersicht();
   if(id==='nachweise') zeigeNachweise();
   if(id==='schueler') zeigeSchueler();
@@ -1017,6 +1034,57 @@ async function schuelerNeu(){
   geaendert(); zeigeSchueler(); toast(`${s.nn}, ${s.vn} hinzugefügt.`);
 }
 
+/* ================= Notenschlüssel-Rechner ================= */
+function zeigeSchluesselrechner(){
+  const sel=$('nsSchluessel'), alt=sel.value || (D.nsLetzter||'mathe');
+  sel.innerHTML=schluesselListe().map(s=>`<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+  sel.value = schluesselListe().some(s=>s.id===alt) ? alt : 'mathe';
+  nsBerechnen();
+}
+function nsDaten(){
+  const be=zahl($('nsBE').value), schl=schluesselVon($('nsSchluessel').value), schritt=Number($('nsSchritt').value);
+  const titel=$('nsTitel').value.trim();
+  if(schl.art!=='be' && !(be>0)) return {fehlt:true, schl};
+  return {be, schl, schritt, titel, tab:C.beTabelle(be, schl, schritt), gr: schl.art==='be'?null:C.grenzen(schl, be)};
+}
+function nsBerechnen(){
+  const d=nsDaten(), el=$('nsErgebnis');
+  if(d.fehlt){ el.innerHTML='<p class="muted">Trage oben die Gesamtpunktzahl ein.</p>'; return; }
+  const zeilen=d.tab.map((z,i)=>{
+    const proz = z.punkte===0 ? '' : (d.gr ? fmt(Math.round(d.gr[15-z.punkte]*10000)/100,1)+' %' : '');
+    const leer = z.bis!=null && z.bis<z.ab;
+    return `<tr${notenKlasse(z.punkte)?` class="${notenKlasse(z.punkte)}"`:''}><td><b>${z.punkte}</b></td><td>${z.note}</td><td class="r">${leer?'–':fmt(z.ab)}</td><td class="r">${leer?'':(z.bis==null?'':fmt(z.bis))}</td><td class="r muted">${proz?'über '+proz:''}</td></tr>`;
+  }).join('');
+  el.innerHTML=`<div class="zeile" style="justify-content:space-between;margin-bottom:8px"><h3 style="margin:0">${esc(d.titel||'Notenschlüssel')} – ${d.schl.art==='be'?'feste BE-Grenzen':fmt(d.be)+' BE'} · ${esc(d.schl.name)}</h3>
+      <div class="zeile"><button class="klein" data-aktion="nsKopieren">Tabelle kopieren</button><button class="klein primary" data-aktion="nsDrucken">Drucken / PDF</button></div></div>
+    ${d.schl.art==='be'?'<p class="klein">Dieser Schlüssel hat feste BE-Grenzen, die Gesamtpunktzahl spielt keine Rolle.</p>':''}
+    <table class="schluesselTab" style="max-width:640px"><thead><tr><th>Punkte</th><th>Note</th><th class="r">ab BE</th><th class="r">bis BE</th><th class="r">Anteil</th></tr></thead><tbody>${zeilen}</tbody></table>`;
+}
+['nsBE','nsSchluessel','nsSchritt','nsTitel'].forEach(id=>{ $(id).addEventListener('input', nsBerechnen); $(id).addEventListener('change', nsBerechnen); });
+$('nsSchluessel').addEventListener('change', ()=>{ D.nsLetzter=$('nsSchluessel').value; });
+function nsTabelleText(d){
+  const kopf=['Punkte','Note','ab BE','bis BE'];
+  const zeilen=d.tab.map(z=>{ const leer=z.bis!=null&&z.bis<z.ab; return [z.punkte, z.note, leer?'–':fmt(z.ab), leer?'':(z.bis==null?'':fmt(z.bis))]; });
+  return {kopf, zeilen};
+}
+async function nsKopieren(){
+  const d=nsDaten(); if(d.fehlt) return;
+  const t=nsTabelleText(d);
+  const tsv=[t.kopf].concat(t.zeilen).map(r=>r.join('\t')).join('\n');
+  const html=`<table border="1" style="border-collapse:collapse"><tr>${t.kopf.map(k=>`<th>${k}</th>`).join('')}</tr>${t.zeilen.map(r=>`<tr>${r.map(x=>`<td style="text-align:center;padding:2px 8px">${esc(x)}</td>`).join('')}</tr>`).join('')}</table>`;
+  try{
+    if(window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([tsv],{type:'text/plain'})})]);
+    else await navigator.clipboard.writeText(tsv);
+    toast('Tabelle kopiert – in Word oder Excel einfügen.');
+  }catch(e){ dialog('Kopieren nicht möglich','Der Browser hat das Kopieren nicht erlaubt. Nutze stattdessen „Drucken / PDF“.'); }
+}
+function nsDrucken(){
+  const d=nsDaten(); if(d.fehlt) return;
+  const t=nsTabelleText(d);
+  drucken(`<h1>${esc(d.titel||'Notenschlüssel')}</h1><div class="sub">${d.schl.art==='be'?'Feste BE-Grenzen':'Gesamtpunktzahl: '+fmt(d.be)+' BE'} · Schlüssel: ${esc(d.schl.name)}${D.lehrkraft?' · '+esc(D.lehrkraft):''}</div>
+    <table style="width:auto;min-width:50%"><thead><tr>${t.kopf.map(k=>`<th>${k}</th>`).join('')}</tr></thead><tbody>${t.zeilen.map(r=>`<tr>${r.map(x=>`<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
+}
+
 /* ================= Daten & Einstellungen ================= */
 function zeigeDaten(){
   const fs='showDirectoryPicker' in window;
@@ -1259,7 +1327,7 @@ const AKTIONEN = {
   allesLoeschen: async ()=>{
     if(!(await frage('Alle Daten löschen?','Alle Kurse, Noten und Schülerlisten werden von diesem Gerät gelöscht. Das lässt sich nicht rückgängig machen.','Alles löschen','Abbrechen',true))) return;
     D=LEER(); await kvSet('daten',D); fuelleKursWahl(); zeigeSeite('start'); pruefeHinweis(); },
-  druckUebersicht, druckKlassenliste, druckNachweis,
+  druckUebersicht, druckKlassenliste, druckNachweis, nsKopieren, nsDrucken,
 };
 $('btnHinweisSichern').onclick=e=>{ const w=e.target.dataset.was; if(w==='verbinden') dateiErneutVerbinden(); else if(w==='neu') dateiNeu(); else dateiSpeichernManuell(); };
 
