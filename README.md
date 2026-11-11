@@ -3,6 +3,8 @@
 Web-App zum Erfassen und Berechnen von Noten (Schulaufgaben, Kurzarbeiten/Stegreifaufgaben, mündliche Noten, Ersatzprüfung).
 Alle Noten bleiben auf dem Gerät der Lehrkraft – dieses Repository enthält nur das Programm, keine Daten.
 
+Zusätzlich: `bewertungsbogen.html` – eigenständiger Bewertungsbogen mit Wortgutachten (1–3 Teilaufgaben, optional Zweitkorrektur) ohne Klassenlisten; Schüler werden als Liste eingefügt.
+
 ## Veröffentlichen (GitHub Pages)
 1. Alle Dateien dieses Ordners in das Repository hochladen (Hauptebene).
 2. Settings → Pages → „Deploy from a branch“ → Branch `main`, Ordner `/ (root)` → Save.

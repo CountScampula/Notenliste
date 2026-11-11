@@ -505,6 +505,7 @@ const norm = s => String(s==null?'':s).trim().toLowerCase();
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const zahl = v => { if(v===''||v==null) return undefined; const n=Number(String(v).replace(',','.')); return isFinite(n)?n:undefined; };
 const fmt = (v,d) => v==null||v==='' ? '' : (d!=null ? Number(v).toFixed(d) : String(Math.round(v*100)/100)).replace('.',',');
+const fmt2 = v => v==null ? '' : fmt(C.round(v,2),2);   // 2 Nachkommastellen, kaufmännisch
 const heuteISO = () => { const d=new Date(), p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; };
 const datumText = iso => { const m=/^(\d{4})-(\d\d)-(\d\d)/.exec(iso||''); return m?`${m[3]}.${m[2]}.${m[1]}`:''; };
 const notenKlasse = p => p==null ? '' : (p===0 ? 'p0' : (p<=3 ? 'p13' : ''));
@@ -1256,8 +1257,8 @@ function bogenTabelleHTML(k,n){
   sch.forEach((s,i)=>{
     const e=C.bogenKorrektor(n,s.id,'e'), z=b.zweit?C.bogenKorrektor(n,s.id,'z'):null, p=C.ergebnis(RN,s.id).punkte;
     h+=`<tr><td class="name" data-bogen="${esc(s.id)}" style="cursor:pointer"><span class="muted klein">${i+1}</span>&nbsp; ${esc(s.nn)}, ${esc(s.vn)}</td>`;
-    e.aufg.forEach(x=>h+=`<td class="wert">${x.summe==null?'':fmt(x.summe,2)}</td>`);
-    h+=`<td class="calc">${e.gesamt==null?(e.irgend?'…':''):fmt(e.gesamt,2)}</td>${b.zweit?`<td class="calc">${z.gesamt==null?(z.irgend?'…':''):fmt(z.gesamt,2)}</td>`:''}<td class="calc note ${notenKlasse(p)}">${p==null?'':p}</td>
+    e.aufg.forEach(x=>h+=`<td class="wert">${x.summe==null?'':fmt2(x.summe)}</td>`);
+    h+=`<td class="calc">${e.gesamt==null?(e.irgend?'…':''):fmt2(e.gesamt)}</td>${b.zweit?`<td class="calc">${z.gesamt==null?(z.irgend?'…':''):fmt2(z.gesamt)}</td>`:''}<td class="calc note ${notenKlasse(p)}">${p==null?'':p}</td>
       <td style="padding:0 6px"><button class="klein" data-bogen="${esc(s.id)}">Bogen</button></td></tr>`;
   });
   if(!sch.length) h+=`<tr><td class="name muted" colspan="99">Keine Schüler im Kurs.</td></tr>`;
@@ -1304,12 +1305,12 @@ function bogenAktualisieren(){
   const b=n.bogen, wer=b.zweit?['e','z']:['e'];
   const erg={}; wer.forEach(w=>erg[w]=C.bogenKorrektor(n,bogenSid,w));
   for(let a=0;a<b.anz;a++){
-    wer.forEach(w=>{ const x=erg[w].aufg[a]; $(`bgSu_${w}_${a}`).textContent=x.summe==null?'':fmt(x.summe,2); $(`bgTe_${w}_${a}`).textContent=x.teil==null?'':fmt(x.teil,2); });
+    wer.forEach(w=>{ const x=erg[w].aufg[a]; $(`bgSu_${w}_${a}`).textContent=x.summe==null?'':fmt2(x.summe); $(`bgTe_${w}_${a}`).textContent=x.teil==null?'':fmt2(x.teil); });
     const t=wer.map(w=>gutachtenTexte(n,bogenSid,a,w).map(x=>`<p class="${w}">${esc(x)}</p>`).join('')).join('');
     $(`bgGut_${a}`).innerHTML = `<div class="klein muted" style="font-weight:600;margin-bottom:4px">Wortgutachten Teilaufgabe ${a+1}</div>` + (t || '<p class="muted klein">Erscheint, sobald Punkte eingetragen sind.</p>');
   }
   const p=C.ergebnis(rechenNw(n), bogenSid).punkte;
-  $('bgFuss').innerHTML=`<div class="bogenErg"><div>Punkte Erstkorrektor<b>${erg.e.gesamt==null?'–':fmt(erg.e.gesamt,2)}</b></div>${b.zweit?`<div>Punkte Zweitkorrektor<b>${erg.z.gesamt==null?'–':fmt(erg.z.gesamt,2)}</b></div>`:''}<div class="np ${notenKlasse(p)}">Notenpunkte<b>${p==null?'–':p}</b></div></div>
+  $('bgFuss').innerHTML=`<div class="bogenErg"><div>Punkte Erstkorrektor<b>${erg.e.gesamt==null?'–':fmt2(erg.e.gesamt)}</b></div>${b.zweit?`<div>Punkte Zweitkorrektor<b>${erg.z.gesamt==null?'–':fmt2(erg.z.gesamt)}</b></div>`:''}<div class="np ${notenKlasse(p)}">Notenpunkte<b>${p==null?'–':p}</b></div></div>
     ${bogenGewSumme(n)!==100?`<p class="klein" style="color:var(--err)">Achtung: Die Gewichtung der Teilaufgaben ergibt ${fmt(bogenGewSumme(n))} % statt 100 %.</p>`:''}
     <div class="gutachten gesamt"><div class="klein muted" style="font-weight:600;margin-bottom:4px">Gesamtwürdigung</div>${p==null?'<p class="muted klein">Erscheint, sobald alle Kriterien des Erstkorrektors bewertet sind.</p>':`<p>${esc(formulierung('gesamt',p))}</p>`}</div>`;
 }
@@ -1355,10 +1356,10 @@ function bogenDruckHTML(k,n,sid){
     <tr><td style="${L}">Gewichtung [%]</td><td></td>${Array.from({length:b.anz},(_,a)=>`<td colspan="${sp}">${fmt(b.gew[a])}</td>`).join('')}</tr>`;
   if(b.zweit) t+=`<tr><td style="${L}">Korrektor</td><td></td>${Array.from({length:b.anz},()=>'<td>1</td><td>2</td>').join('')}</tr>`;
   BOGEN_KRIT.forEach((kr,c)=>{ t+=`<tr><td style="${L}">${esc(kr.name)}</td><td>${kr.gew}</td>${Array.from({length:b.anz},(_,a)=>wer.map(w=>{ const v=(((bw[w]||[])[a])||[])[c]; return `<td>${v==null?'':v}</td>`; }).join('')).join('')}</tr>`; });
-  t+=`<tr><td style="${L}"><b>Summe</b></td><td></td>${Array.from({length:b.anz},(_,a)=>wer.map(w=>{ const x=erg[w].aufg[a]; return `<td>${x.summe==null?'':fmt(x.summe,2)}</td>`; }).join('')).join('')}</tr>
-    <tr><td style="${L}"><b>Teilaufgabe</b></td><td></td>${Array.from({length:b.anz},(_,a)=>wer.map(w=>{ const x=erg[w].aufg[a]; return `<td>${x.teil==null?'':fmt(x.teil,2)}</td>`; }).join('')).join('')}</tr></table>
-    <table style="font-size:10pt;margin-top:8pt;width:auto;min-width:70%"><tr><td style="${L}">Punkte Erstkorrektor:</td><td><b>${erg.e.gesamt==null?'':fmt(erg.e.gesamt,2)}</b></td></tr>
-    ${b.zweit?`<tr><td style="${L}">Punkte Zweitkorrektor:</td><td><b>${erg.z.gesamt==null?'':fmt(erg.z.gesamt,2)}</b></td></tr>`:''}
+  t+=`<tr><td style="${L}"><b>Summe</b></td><td></td>${Array.from({length:b.anz},(_,a)=>wer.map(w=>{ const x=erg[w].aufg[a]; return `<td>${x.summe==null?'':fmt2(x.summe)}</td>`; }).join('')).join('')}</tr>
+    <tr><td style="${L}"><b>Teilaufgabe</b></td><td></td>${Array.from({length:b.anz},(_,a)=>wer.map(w=>{ const x=erg[w].aufg[a]; return `<td>${x.teil==null?'':fmt2(x.teil)}</td>`; }).join('')).join('')}</tr></table>
+    <table style="font-size:10pt;margin-top:8pt;width:auto;min-width:70%"><tr><td style="${L}">Punkte Erstkorrektor:</td><td><b>${erg.e.gesamt==null?'':fmt2(erg.e.gesamt)}</b></td></tr>
+    ${b.zweit?`<tr><td style="${L}">Punkte Zweitkorrektor:</td><td><b>${erg.z.gesamt==null?'':fmt2(erg.z.gesamt)}</b></td></tr>`:''}
     <tr><td style="${L}background:#fff2cc"><b>Punkte:</b></td><td style="background:#fff2cc;font-size:13pt"><b>${p==null?'':p}</b></td></tr></table>
     <div style="margin-top:22pt;font-size:9.5pt">1. Korrektor: ______________________________</div>
     ${b.zweit?'<div style="margin-top:16pt;font-size:9.5pt">2. Korrektor: ______________________________</div>':''}`;
@@ -1908,7 +1909,7 @@ function druckNachweis(){
   if(n.modus==='bogen'){
     h+=`<table><thead><tr><th>Nr.</th><th class="l">Name</th>${Array.from({length:n.bogen.anz},(_,a)=>`<th>A${a+1}</th>`).join('')}<th>Erstkorr.</th>${n.bogen.zweit?'<th>Zweitkorr.</th>':''}<th>Punkte</th></tr></thead><tbody>`;
     sch.forEach((s,i)=>{ const e=C.bogenKorrektor(n,s.id,'e'), z=n.bogen.zweit?C.bogenKorrektor(n,s.id,'z'):null, p=C.ergebnis(RN,s.id).punkte;
-      h+=`<tr><td>${i+1}</td><td class="l">${esc(s.nn)}, ${esc(s.vn)}</td>${e.aufg.map(x=>`<td>${x.summe==null?'':fmt(x.summe,2)}</td>`).join('')}<td>${e.gesamt==null?'':fmt(e.gesamt,2)}</td>${z?`<td>${z.gesamt==null?'':fmt(z.gesamt,2)}</td>`:''}<td><b>${p==null?'':p}</b></td></tr>`; });
+      h+=`<tr><td>${i+1}</td><td class="l">${esc(s.nn)}, ${esc(s.vn)}</td>${e.aufg.map(x=>`<td>${x.summe==null?'':fmt2(x.summe)}</td>`).join('')}<td>${e.gesamt==null?'':fmt2(e.gesamt)}</td>${z?`<td>${z.gesamt==null?'':fmt2(z.gesamt)}</td>`:''}<td><b>${p==null?'':p}</b></td></tr>`; });
     h+=`</tbody></table><p style="margin-top:8pt"><b>Notenspiegel</b> (∅ ${sp.schnitt==null?'–':fmt(sp.schnitt,2)}, ${sp.teilnehmer} Teilnehmer)</p><table><tr>${Array.from({length:16},(_,i)=>`<th>${15-i}</th>`).join('')}</tr><tr>${Array.from({length:16},(_,i)=>`<td>${sp.anzahl[15-i]||''}</td>`).join('')}</tr></table>`;
     drucken(h); return;
   }

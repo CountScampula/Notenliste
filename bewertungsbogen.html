@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d5c63">
+<title>Bewertungsbogen</title>
+<style>
+:root{--bg:#f5f4f0;--panel:#fff;--ink:#1f2328;--muted:#646b73;--line:#dedbd3;--line2:#eeebe4;--accent:#1d5c63;--accent-soft:#e3efef;--err:#a8262a;--err-soft:#fbe3e3;--warn:#a4501a;--warn-soft:#fbeee4;--ok:#2d6a3e;--ok-soft:#e5f1e7}
+*{box-sizing:border-box} html,body{margin:0}
+body{font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink);background:var(--bg);-webkit-text-size-adjust:100%}
+button{font:inherit;cursor:pointer;border-radius:7px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 13px}
+button:hover{border-color:#bdb8ad} button.primary{background:var(--accent);border-color:var(--accent);color:#fff} button.danger{color:var(--err)}
+button.klein{padding:4px 9px;font-size:13px} button:disabled{opacity:.45;cursor:default} button.link{border:none;background:none;color:var(--accent);padding:2px 4px;text-decoration:underline}
+input,select,textarea{font:inherit;color:inherit;border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:#fff;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+label.feld{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:#4c535a}
+label.feld input,label.feld select,label.feld textarea{font-weight:400;font-size:15px;color:var(--ink)}
+.zeile{display:flex;gap:10px;align-items:center;flex-wrap:wrap} .muted{color:var(--muted)} .klein{font-size:13px}
+header{display:flex;align-items:center;gap:14px;padding:9px 18px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap;position:sticky;top:0;z-index:5}
+.marke{font-size:17px;margin:0} .marke b{color:var(--accent)}
+nav{display:flex;gap:3px;overflow-x:auto} nav button{border:none;background:none;color:var(--muted);padding:7px 11px;flex:none} nav button.aktiv{background:var(--accent-soft);color:var(--accent);font-weight:600}
+#status{margin-left:auto;font-size:12.5px;color:var(--muted)}
+main{padding:18px;max-width:1500px;margin:0 auto} .seite{display:none} .seite.aktiv{display:block}
+.karte{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin-bottom:16px}
+.karte h2{margin:0 0 6px;font-size:19px} .karte h3{margin:0 0 6px;font-size:16px} .karte p{margin:6px 0;color:var(--muted)}
+.raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.schuelerListe{list-style:none;margin:0;padding:0;columns:2;column-gap:28px}
+.schuelerListe li{display:flex;justify-content:space-between;gap:10px;padding:6px 4px;border-bottom:1px solid var(--line2);break-inside:avoid}
+#bwLayout{display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start}
+#bwListe{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px;position:sticky;top:70px;max-height:calc(100vh - 90px);overflow:auto}
+#bwListe .s{padding:7px 10px;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center}
+#bwListe .s:hover{background:#f3f1ec} #bwListe .s.aktiv{background:var(--accent-soft)} #bwListe .s .np{font-weight:700;min-width:22px;text-align:right}
+#bwListe .s .np.offen{font-weight:400;font-size:12px;color:var(--muted)}
+.bogenKopf{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.bogenGrid{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:14px}
+.bogenAufg{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fbfaf7}
+.bogenAufg h4{margin:0 0 8px;font-size:15px}
+.bogenTab{width:100%;border-collapse:collapse;font-size:13.5px}
+.bogenTab th{font-size:11.5px;color:var(--muted);font-weight:600;text-align:left;padding:3px 4px;border-bottom:1px solid var(--line)}
+.bogenTab td{padding:4px;border-bottom:1px solid var(--line2)} .bogenTab .r{text-align:right}
+.bogenTab th.ek{color:#b00000} .bogenTab th.zk{color:#006600}
+.bogenTab tr.su td{font-weight:650;text-align:center} .bogenTab tr.su td:first-child{text-align:left}
+.bogenTab input.bgIn{width:58px;text-align:center;padding:6px 4px;font-weight:650}
+.bogenTab input.bgIn.e{color:#b00000} .bogenTab input.bgIn.z{color:#006600} .bogenTab input.bgIn.falsch{background:var(--err-soft);border-color:var(--err)}
+.gutachten{margin-top:10px;font-size:13px;line-height:1.4;background:#fff;border:1px solid var(--line2);border-radius:8px;padding:8px 10px}
+.gutachten p{margin:0 0 6px} .gutachten p.e{color:#b00000} .gutachten p.z{color:#006600}
+.bogenErg{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.bogenErg div{background:#f7f6f2;border-radius:8px;padding:8px 14px;font-size:12.5px;color:var(--muted);min-width:150px}
+.bogenErg b{display:block;font-size:20px;color:var(--ink)} .bogenErg .np{background:var(--accent-soft)} .bogenErg .np b{color:var(--accent);font-size:24px}
+.hinweis{font-size:13px;border-radius:8px;padding:8px 10px;margin-top:10px} .hinweis.warn{background:var(--warn-soft);color:var(--warn)} .hinweis.err{background:var(--err-soft);color:var(--err)}
+table.liste{border-collapse:collapse;font-size:14px;background:#fff}
+table.liste th,table.liste td{border-bottom:1px solid var(--line2);padding:6px 10px;text-align:center}
+table.liste th{font-size:12.5px;color:var(--muted);background:#f7f6f2} table.liste td.l,table.liste th.l{text-align:left}
+.p0{background:#f3c9c9;color:#7d1418} .p13{background:#fbe6d6;color:#8a3b0c}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#22282d;color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:30}
+#toast.zeigen{opacity:1}
+#druck{display:none}
+@media print{
+  body{background:#fff} header,main,#toast{display:none !important}
+  #druck{display:block}
+  #druck table{border-collapse:collapse;width:100%} #druck th,#druck td{border:1px solid #999;padding:2pt 4pt;text-align:center}
+  #druck tr{break-inside:avoid}
+  @page{size:A4 landscape;margin:12mm}
+}
+@media (max-width:1000px){ .bogenGrid{grid-template-columns:1fr} }
+@media (max-width:820px){ #bwLayout{grid-template-columns:1fr} #bwListe{position:static;max-height:260px} .schuelerListe{columns:1} main{padding:12px} #status{display:none} }
+@media (pointer:coarse){ input,select,textarea{font-size:16px !important} }
+</style>
+</head>
+<body>
+<header>
+  <h1 class="marke"><b>Bewertungs</b>bogen</h1>
+  <nav id="tabs">
+    <button data-seite="arbeit" class="aktiv">Arbeit &amp; Schüler</button>
+    <button data-seite="bewertung">Bewertung</button>
+    <button data-seite="uebersicht">Übersicht</button>
+    <button data-seite="texte">Textbausteine</button>
+  </nav>
+  <span id="status"></span>
+</header>
+<main>
+  <section id="arbeit" class="seite aktiv"></section>
+  <section id="bewertung" class="seite"><div id="bwLayout"><div id="bwListe"></div><div id="bwBogen"></div></div></section>
+  <section id="uebersicht" class="seite"></section>
+  <section id="texte" class="seite"></section>
+</main>
+<div id="druck"></div>
+<div id="toast"></div>
+<input type="file" id="dateiWahl" accept=".json,application/json" hidden>
+<script>
+'use strict';
+/* ---------- Grundlagen ---------- */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const zahl=v=>{ if(v===''||v==null) return undefined; const n=Number(String(v).replace(',','.')); return isFinite(n)?n:undefined; };
+const fmt=(v,d)=>v==null||v===''?'':(d!=null?Number(v).toFixed(d):String(Math.round(v*100)/100)).replace('.',',');
+const istZahl=v=>typeof v==='number'&&isFinite(v);
+const p15=x=>Number(Number(x).toPrecision(15));
+const runden=x=>{ const v=p15(Math.abs(x)); return (x<0?-1:1)*Math.floor(v+0.5); };   // kaufmännisch wie Excel RUNDEN
+const datumText=iso=>{ const m=/^(\d{4})-(\d\d)-(\d\d)/.exec(iso||''); return m?`${m[3]}.${m[2]}.${m[1]}`:''; };
+const heuteISO=()=>{ const d=new Date(),p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; };
+const notenKlasse=p=>p==null?'':(p===0?'p0':(p<=3?'p13':''));
+function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('zeigen'); clearTimeout(toast.t); toast.t=setTimeout(()=>e.classList.remove('zeigen'),2600); }
+
+const fmt2=v=>v==null?'':fmt(runden(v*100)/100,2);   // 2 Nachkommastellen, kaufmännisch
+/* ---------- Bewertungslogik (wie Excel-Vorlage) ---------- */
+const KRIT=[ {key:'darst',name:'1. Art der Darstellung',gew:17}, {key:'kennt',name:'2. Reproduktion der (Er-)Kenntnisse',gew:33}, {key:'anw',name:'3. Anwendung der (Er-)Kenntnisse',gew:50} ];
+const GEW_STANDARD={1:[100],2:[50,50],3:[45,35,20]};
+const FORM_STANDARD={
+"darst": [
+"Die Art der Darstellung entspricht nicht mehr den Anforderungen. Die Aussagen sind völlig unverständlich und unklar.",
+"Die Art der Darstellung zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen. Zusammenhänge werden kaum deutlich.",
+"Die Art der Darstellung zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen. Die Aussagen sind verschwommen und uneindeutig.",
+"Die Art der Darstellung zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen. Die Darstellungen sind verschwommen und kaum strukturiert.",
+"Die Art der Darstellung zeigt zwar Schwächen, entspricht aber im Ganzen noch den Anforderungen. Zusammenhänge werden meist undeutlich dargestellt.",
+"Die Art der Darstellung zeigt zwar Schwächen, entspricht aber im Ganzen noch den Anforderungen. Zusammenhänge werden nur teilweise deutlich dargestellt.",
+"Die Art der Darstellung zeigt zwar Schwächen, entspricht aber im Ganzen noch den Anforderungen. Die Darstellungen sind nur wenig prägnant und strukturiert.",
+"Die Art der Darstellung entspricht im Allgemeinen den Anforderungen. Die Aussagen sind meist klar und präzise formuliert.",
+"Die Art der Darstellung entspricht im Allgemeinen den Anforderungen. Die Aussagen sind meist eindeutig und präzise formuliert.",
+"Die Art der Darstellung entspricht im Allgemeinen den Anforderungen. Die Aussage sind meist klar und eindeutig.",
+"Die Art der Darstellung entspricht voll den Anforderungen. Die Aussagen sind mit wenigen Ausnahmen stets klar und präzise formuliert.",
+"Die Art der Darstellung entspricht voll den Anforderungen. Die Aussagen sind mit wenigen Ausnahmen eindeutig und präzise formuliert.",
+"Die Art der Darstellung entspricht voll den Anforderungen. Die Aussagen sind mit wenigen Ausnahmen klar und eindeutig.",
+"Die Art der Darstellung entspricht in einem besonderen Maße den Anforderungen. Die Aussagen sind stets klar und präzise formuliert.",
+"Die Art der Darstellung entspricht in einem besonderen Maße den Anforderungen. Die Aussagen sind stets eindeutig und präzise formuliert.",
+"Die Art der Darstellung entspricht in einem besonderen Maße den Anforderungen. Die Aussagen sind in allen Teilen klar und eindeutig."
+],
+"kennt": [
+"Die Ausarbeitung der theoretischen Grundlagen entspricht nicht den Anforderungen und lässt selbst die notwendigen Grundkenntnisse nicht erkennen. Die Definitionen und Erklärungen sind völlig ungenau und sehr fragmentarisch.",
+"Die Reproduktion der Kenntnisse zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen, da bezüglich der Fachbegriffe große Wissenslücken deutlich werden.",
+"Die Reproduktion der Kenntnisse zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen, da Inhalte nur fragmentarisch und meist ungenau beschrieben werden.",
+"Die Reproduktion der Kenntnisse zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen, da Fachbegriffe meist falsch dargestellt werden.",
+"Die Reproduktion der Kenntnisse weist zwar Schwächen auf, entspricht jedoch im Ganzen noch den Anforderungen, da Fachbegriffe häufig falsch dargestellt werden und Wissenslücken deutlich werden.",
+"Die Reproduktion der Kenntnisse weist zwar Schwächen auf, entspricht jedoch im Ganzen noch den Anforderungen, da Inhalte nur oberflächlich und zuweilen ungenau beschrieben werden.",
+"Die Reproduktion der Kenntnisse weist zwar Schwächen auf, entspricht jedoch im Ganzen noch den Anforderungen, da Fachbegriffe nur teilweise korrekt dargestellt werden.",
+"Die Reproduktion der Kenntnisse entspricht im Allgemeinen den Anforderungen, da Inhalte größtenteils zutreffend dargestellt werden.",
+"Die Reproduktion der Kenntnisse entspricht im Allgemeinen den Anforderungen, da Inhalte meist deutlich dargestellt werden.",
+"Die Reproduktion der Kenntnisse entspricht im Allgemeinen den Anforderungen, da Fachbegriffe größtenteils korrekt dargestellt werden.",
+"Die Reproduktion der Kenntnisse entspricht voll den Anforderungen, da Fachbegriffe mit wenigen Ausnahmen sachgerecht definiert werden.",
+"Die Reproduktion der Kenntnisse entspricht voll den Anforderungen, da Fachbegriffe mit wenigen Ausnahmen zutreffend beschrieben werden.",
+"Die Reproduktion der Kenntnisse entspricht voll den Anforderungen, da Fachbegriffe mit wenigen Ausnahmen korrekt dargestellt werden.",
+"Die Reproduktion der Kenntnisse entspricht in besonderem Maße den Anforderungen. Fachbegriffe werden stets korrekt erläutert.",
+"Die Reproduktion der Kenntnisse entspricht in besonderem Maße den Anforderungen. Inhalte werden stets genau und zutreffend beschrieben.",
+"Die Ausarbeitung der theoretischen Kenntnisse entspricht in besonderem Maße den Anforderungen. Fachbegriffe werden uneingeschränkt korrekt dargestellt."
+],
+"anw": [
+"Die Qualität der Anwendung entspricht nicht den Anforderungen und lässt selbst die notwendigen Grundkenntnisse nicht erkennen. Die Transferbezüge sind nicht folgerichtig und nicht sachgerecht.",
+"Die Anwendung der Kenntnisse zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen, denn der Bezug zum Fallbeispiel erfolgt wenig überzeugend.",
+"Die Anwendung der Kenntnisse zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen, denn der Bezug zum Fallbeispiel erfolgt kaum überzeugend.",
+"Die Anwendung der Kenntnisse zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen, denn der Bezug zum Fallbeispiel ist kaum überzeugend.",
+"Die Anwendung der Kenntnisse weist zwar Schwächen auf, entspricht aber im Ganzen noch den Anforderungen, denn der Bezug zum Fallbeispiel erfolgt nur teilweise überzeugend.",
+"Die Anwendung der Kenntnisse weist zwar Schwächen auf, entspricht aber im Ganzen noch den Anforderungen, denn der Bezug zum Fallbeispiel ist nur in Teilen überzeugend.",
+"Die Anwendung der Kenntnisse weist zwar Schwächen auf, entspricht aber im Ganzen noch den Anforderungen, denn der Bezug zum Fallbeispiel ist nur teilweise überzeugend.",
+"Die Anwendung der Kenntnisse entspricht im Allgemeinen den Anforderungen, denn der Bezug zum Fallbeispiel erfolgt nicht immer überzeugend.",
+"Die Anwendung der Kenntnisse entspricht im Allgemeinen den Anforderungen, denn der Bezug zum Fallbeispiel gelingt meist überzeugend.",
+"Die Anwendung der Kenntnisse entspricht im Allgemeinen den Anforderungen, denn der Bezug zum Fallbeispiel gelingt größtenteils überzeugend.",
+"Die Anwendung der Kenntnisse entspricht voll den Anforderungen, denn der Bezug zum Fallbeispiel erfolgt bis auf wenige Ausnahmen überzeugend.",
+"Die Anwendung der Kenntnisse entspricht voll den Anforderungen, denn der Bezug zum Fallbeispiel gelingt bis auf wenige Ausnahmen sachgerecht.",
+"Die Anwendung der Kenntnisse entspricht voll den Anforderungen, denn der Bezug zum Fallbeispiel gelingt bis auf wenige Ausnahmen überzeugend.",
+"Die Anwendung der Kenntnisse entspricht in besonderem Maße den Anforderungen, denn der Bezug zum Fallbeispiel gelingt stets sehr umfassend und sachgerecht.",
+"Die Anwendung der Kenntnisse entspricht in besonderem Maße den Anforderungen, denn der Bezug zum Fallbeispiel gelingt stets äußerst überzeugend.",
+"Die Anwendung der Kenntnisse entspricht in besonderem Maße den Anforderungen, denn ein sinnvoller Bezug zum Fallbeispiel ist jederzeit vorhanden."
+],
+"gesamt": [
+"In Gesamtheit liegt eine Leistung vor, die Mängel aufweist und den Anforderungen nicht mehr entspricht und auch grundlegende Kenntnisse nicht mehr zeigt und dementsprechend mit 0 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die Mängel aufweist und den Anforderungen nicht mehr entspricht aber grundlegende Kenntnisse aufzeigt und dementsprechend mit 1 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die Mängel aufweist und den Anforderungen nicht mehr entspricht aber grundlegende Kenntnisse aufzeigt und dementsprechend mit 2 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die Mängel aufweist und den Anforderungen nicht mehr entspricht aber grundlegende Kenntnisse aufzeigt und dementsprechend mit 3 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die zwar Mängel aufweist, den Anforderungen aber noch entspricht und dementsprechend mit 4 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die zwar Mängel aufweist, den Anforderungen aber noch entspricht und dementsprechend mit 5 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die zwar Mängel aufweist, den Anforderungen aber noch entspricht und dementsprechend mit 6 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen im Wesentlichen entspricht und dementsprechend mit 7 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen im Wesentlichen entspricht und dementsprechend mit 8 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen im Wesentlichen entspricht und dementsprechend mit 9 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen voll entspricht und dementsprechend mit 10 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen voll entspricht und dementsprechend mit 11 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen voll entspricht und dementsprechend mit 12 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen in besonderem Maße entspricht und dementsprechend mit 13 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen in besonderem Maße entspricht und dementsprechend mit 14 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen in besonderem Maße entspricht und dementsprechend mit 15 Notenpunkten zu bewerten ist."
+]
+};
+const FORM_KAT={darst:'Art der Darstellung',kennt:'Reproduktion der Kenntnisse',anw:'Anwendung der Kenntnisse',gesamt:'Gesamtwürdigung'};
+function formulierung(kat,p){ const l=(S.formulierungen&&S.formulierungen[kat])||FORM_STANDARD[kat]; return istZahl(p)?(l[p]||''):''; }
+function korrektor(sid,wer){
+  const b=S.bogen, bw=(S.bw[sid]&&S.bw[sid][wer])||[]; const aufg=[]; let ges=0, voll=true, irgend=false;
+  for(let a=0;a<b.anz;a++){
+    const v=bw[a]||[]; let ok=true;
+    for(let c=0;c<3;c++){ if(istZahl(v[c])) irgend=true; else ok=false; }
+    const su=ok?p15(KRIT[0].gew*v[0]/100+KRIT[1].gew*v[1]/100+KRIT[2].gew*v[2]/100):null;
+    const teil=ok?p15(su*(Number(b.gew[a])||0)/100):null;
+    if(ok) ges+=teil; else voll=false;
+    aufg.push({summe:su,teil});
+  }
+  return {aufg, gesamt:voll?p15(ges):null, irgend};
+}
+// Note = gerundeter Wert des Erstkorrektors
+function punkte(sid){ const e=korrektor(sid,'e'); return e.gesamt==null?null:Math.max(0,Math.min(15,runden(e.gesamt))); }
+function gewSumme(){ return S.bogen.gew.slice(0,S.bogen.anz).reduce((a,b)=>a+(Number(b)||0),0); }
+function gutachten(sid,a,w){ const v=(((S.bw[sid]||{})[w]||[])[a])||[]; return KRIT.map((k,c)=>formulierung(k.key,v[c])).filter(Boolean); }
+function offenZweit(sid){ if(!S.bogen.zweit) return false; const e=korrektor(sid,'e'), z=korrektor(sid,'z'); return e.gesamt!=null && z.gesamt==null; }
+
+/* ---------- Speicher ---------- */
+const KEY='bewertungsbogen-v1';
+const LEER=()=>({format:'bewertungsbogen',version:1,schule:'Staatliche Fachoberschule Altötting',klasse:'',fach:'',titel:'',datum:heuteISO(),bogen:{anz:3,gew:[45,35,20],zweit:false},schueler:[],bw:{},formulierungen:null,aktiv:null,geaendert:null});
+let S=LEER();
+try{ const t=localStorage.getItem(KEY); if(t){ const j=JSON.parse(t); if(j&&j.format==='bewertungsbogen') S=Object.assign(LEER(),j); } }catch(e){ console.warn(e); }
+let speicherT=null;
+function geaendert(){ S.geaendert=new Date().toISOString(); clearTimeout(speicherT); speicherT=setTimeout(()=>{ try{ localStorage.setItem(KEY,JSON.stringify(S)); $('status').textContent='✓ Auf diesem Gerät gespeichert'; }catch(e){ $('status').textContent='⚠ Nicht gespeichert'; } },200); }
+function dateiName(){ const t=[S.klasse,S.titel].filter(Boolean).join('_').replace(/[^\wÄÖÜäöüß.-]+/g,'_'); return `Bewertungsbogen_${t||heuteISO()}.json`; }
+async function dateiSpeichern(){
+  const text=JSON.stringify(S,null,1), name=dateiName(), datei=new File([text],name,{type:'application/json'});
+  try{ if(navigator.canShare && navigator.canShare({files:[datei]}) && 'ontouchend' in document){ await navigator.share({files:[datei],title:'Bewertungsbogen'}); return; } }catch(e){ if(e.name==='AbortError') return; }
+  const u=URL.createObjectURL(datei), a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),2000);
+}
+$('dateiWahl').onchange=async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f) return;
+  let j; try{ j=JSON.parse(await f.text()); }catch(x){ alert('Die Datei ist keine gültige JSON-Datei.'); return; }
+  if(!j||j.format!=='bewertungsbogen'){ alert('Diese Datei enthält keinen Bewertungsbogen.'); return; }
+  if(S.schueler.length && !confirm('Die aktuelle Arbeit wird durch die Datei ersetzt. Vorher speichern? Abbrechen = nicht laden.')) return;
+  S=Object.assign(LEER(),j); geaendert(); zeige(A.seite); toast(`„${f.name}“ geladen.`);
+};
+
+/* ---------- Navigation ---------- */
+const A={seite:'arbeit'};
+$('tabs').onclick=e=>{ const b=e.target.closest('button'); if(b) zeige(b.dataset.seite); };
+function zeige(id){
+  A.seite=id;
+  document.querySelectorAll('.seite').forEach(s=>s.classList.toggle('aktiv',s.id===id));
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('aktiv',b.dataset.seite===id));
+  ({arbeit:zeigeArbeit,bewertung:zeigeBewertung,uebersicht:zeigeUebersicht,texte:zeigeTexte})[id]();
+}
+
+/* ---------- Reiter: Arbeit & Schüler ---------- */
+function zeigeArbeit(){
+  const b=S.bogen, sum=gewSumme();
+  $('arbeit').innerHTML=`<div class="karte"><h2>Arbeit</h2>
+    <div class="raster" style="margin-top:10px">
+      <label class="feld">Klasse<input data-s="klasse" value="${esc(S.klasse)}" placeholder="z. B. 12S1"></label>
+      <label class="feld">Fach<input data-s="fach" value="${esc(S.fach)}" placeholder="z. B. Pädagogik"></label>
+      <label class="feld">Bezeichnung<input data-s="titel" value="${esc(S.titel)}" placeholder="z. B. 1. Schulaufgabe"></label>
+      <label class="feld">Datum<input type="date" data-s="datum" value="${esc(S.datum)}"></label>
+    </div>
+    <div class="zeile" style="gap:14px;margin-top:14px;align-items:flex-end">
+      <label class="feld" style="width:140px">Teilaufgaben<select data-b="anz">${[1,2,3].map(x=>`<option value="${x}"${b.anz===x?' selected':''}>${x}</option>`).join('')}</select></label>
+      ${Array.from({length:b.anz},(_,a)=>`<label class="feld" style="width:125px">Gewichtung A${a+1} (%)<input data-b="gew" data-a="${a}" inputmode="decimal" value="${fmt(b.gew[a])}"></label>`).join('')}
+      <label class="zeile" style="gap:6px;font-size:14px;padding-bottom:8px"><input type="checkbox" data-b="zweit" style="width:auto"${b.zweit?' checked':''}> Zweitkorrektur (Abitur)</label>
+    </div>
+    ${sum!==100?`<div class="hinweis err">Die Gewichtung der Teilaufgaben ergibt ${fmt(sum)} % – sie muss 100 % ergeben.</div>`:''}
+    <p class="klein" style="margin-top:12px">Kriterien je Teilaufgabe: Darstellung 17 %, Reproduktion 33 %, Anwendung 50 % (je 0–15 Punkte). Die Note ist der gerundete Wert des Erstkorrektors.</p>
+    <label class="feld" style="max-width:420px;margin-top:10px">Schule (Kopfzeile im Ausdruck)<input data-s="schule" value="${esc(S.schule)}"></label>
+  </div>
+  <div class="karte"><h2>Schüler einfügen</h2>
+    <p>Ein Name pro Zeile. Du kannst die Namen direkt aus Excel kopieren – auch zwei Spalten (Nachname und Vorname) werden erkannt.</p>
+    <textarea id="namenEingabe" rows="8" placeholder="Abel, Anna&#10;Berg, Ben&#10;Cem, Cara" style="margin-top:6px;font-family:inherit"></textarea>
+    <div class="zeile" style="margin-top:10px"><button class="primary" id="btnNamen">Zur Liste hinzufügen</button><span class="muted klein">Doppelte Namen werden übersprungen.</span></div>
+  </div>
+  <div class="karte"><div class="zeile" style="justify-content:space-between"><h2 style="margin:0">Schülerliste <span class="muted" style="font-weight:400">(${S.schueler.length})</span></h2>
+    <div class="zeile">${S.schueler.length?'<button class="klein" id="btnSortieren">Alphabetisch sortieren</button><button class="klein danger" id="btnAlleWeg">Alle entfernen …</button>':''}</div></div>
+    ${S.schueler.length?`<ul class="schuelerListe" style="margin-top:12px">${S.schueler.map((s,i)=>{ const p=punkte(s.id); return `<li><span><span class="muted klein">${i+1}</span>&nbsp; ${esc(s.name)}${p!=null?` <span class="muted klein">· ${p} P.</span>`:''}</span><button class="link klein" data-weg="${s.id}">entfernen</button></li>`; }).join('')}</ul>`:'<p>Noch keine Schüler. Füge oben die Namen ein.</p>'}
+  </div>
+  <div class="karte"><h2>Datei</h2>
+    <p>Die Eingaben werden automatisch in diesem Browser gespeichert. Zum Sichern oder für ein anderes Gerät speicherst du die Arbeit als Datei.</p>
+    <div class="zeile"><button class="primary" id="btnSpeichern">Als Datei speichern …</button><button id="btnOeffnen">Datei öffnen …</button><button class="danger" id="btnNeu">Neue Arbeit …</button></div>
+  </div>`;
+}
+$('arbeit').addEventListener('change',e=>{
+  const el=e.target;
+  if(el.dataset.s){ S[el.dataset.s]=el.value.trim(); geaendert(); return; }
+  if(el.dataset.b){
+    const b=S.bogen;
+    if(el.dataset.b==='anz'){ b.anz=+el.value; b.gew=GEW_STANDARD[b.anz].slice(); }
+    else if(el.dataset.b==='gew'){ const v=zahl(el.value); if(v==null||v<0) toast('Bitte eine Zahl eintragen.'); else b.gew[+el.dataset.a]=v; }
+    else if(el.dataset.b==='zweit') b.zweit=el.checked;
+    geaendert(); zeigeArbeit();
+  }
+});
+$('arbeit').addEventListener('click',e=>{
+  const t=e.target;
+  if(t.id==='btnNamen') namenHinzufuegen();
+  else if(t.id==='btnSortieren'){ S.schueler.sort((a,b)=>a.name.localeCompare(b.name,'de',{sensitivity:'base'})); geaendert(); zeigeArbeit(); }
+  else if(t.id==='btnAlleWeg'){ if(confirm('Alle Schüler und ihre Bewertungen entfernen?')){ S.schueler=[]; S.bw={}; S.aktiv=null; geaendert(); zeigeArbeit(); } }
+  else if(t.dataset.weg){ const s=S.schueler.find(x=>x.id===t.dataset.weg); const hat=korrektor(s.id,'e').irgend||korrektor(s.id,'z').irgend;
+    if(hat && !confirm(`${s.name} hat schon eine Bewertung. Trotzdem entfernen?`)) return;
+    S.schueler=S.schueler.filter(x=>x!==s); delete S.bw[s.id]; if(S.aktiv===s.id) S.aktiv=null; geaendert(); zeigeArbeit(); }
+  else if(t.id==='btnSpeichern') dateiSpeichern();
+  else if(t.id==='btnOeffnen') $('dateiWahl').click();
+  else if(t.id==='btnNeu'){ if(confirm('Neue Arbeit beginnen? Die aktuelle Arbeit wird auf diesem Gerät gelöscht. Speichere sie vorher als Datei, wenn du sie behalten willst.')){ const f=S.formulierungen, sch=S.schule; S=LEER(); S.formulierungen=f; S.schule=sch; geaendert(); zeigeArbeit(); } }
+});
+function namenHinzufuegen(){
+  const zeilen=$('namenEingabe').value.split(/\r?\n/).map(z=>z.trim()).filter(Boolean);
+  let neu=0, doppelt=0;
+  zeilen.forEach(z=>{
+    let teile=z.split('\t').map(x=>x.trim()).filter(Boolean);
+    let name = teile.length>=2 ? `${teile[0]}, ${teile[1]}` : z.replace(/\s+/g,' ');
+    if(S.schueler.some(s=>s.name.toLowerCase()===name.toLowerCase())){ doppelt++; return; }
+    S.schueler.push({id:uid(),name}); neu++;
+  });
+  if(!neu && !doppelt){ toast('Bitte zuerst Namen eintragen.'); return; }
+  geaendert(); zeigeArbeit(); toast(`${neu} Schüler hinzugefügt${doppelt?`, ${doppelt} doppelt übersprungen`:''}.`);
+}
+
+/* ---------- Reiter: Bewertung ---------- */
+function zeigeBewertung(){
+  if(!S.schueler.length){ $('bwListe').innerHTML=''; $('bwBogen').innerHTML=`<div class="karte"><p>Noch keine Schüler. Füge sie im Reiter „Arbeit &amp; Schüler“ ein.</p><button class="primary" onclick="zeige('arbeit')">Zu „Arbeit &amp; Schüler“</button></div>`; return; }
+  if(!S.schueler.some(s=>s.id===S.aktiv)) S.aktiv=S.schueler[0].id;
+  zeigeListe(); zeigeBogen();
+}
+function zeigeListe(){
+  $('bwListe').innerHTML=S.schueler.map((s,i)=>{ const p=punkte(s.id), e=korrektor(s.id,'e'), oz=offenZweit(s.id);
+    return `<div class="s${s.id===S.aktiv?' aktiv':''}" data-sid="${s.id}"><span><span class="muted klein">${i+1}</span>&nbsp; ${esc(s.name)}${oz?' <span class="klein" style="color:var(--warn)" title="Zweitkorrektur fehlt">●</span>':''}</span><span class="np ${p==null?'offen':notenKlasse(p)}">${p!=null?p:(e.irgend?'…':'')}</span></div>`; }).join('');
+}
+$('bwListe').addEventListener('click',e=>{ const s=e.target.closest('[data-sid]'); if(s){ S.aktiv=s.dataset.sid; geaendert(); zeigeListe(); zeigeBogen(); fokusErstes(); } });
+function fokusErstes(){ const f=$('bwBogen').querySelector('input.bgIn'); if(f && !('ontouchend' in document)){ f.focus(); f.select(); } }
+function zeigeBogen(){
+  const b=S.bogen, idx=S.schueler.findIndex(s=>s.id===S.aktiv), s=S.schueler[idx]; if(!s) return;
+  const bw=S.bw[s.id]||{}, wer=b.zweit?['e','z']:['e'];
+  let h=`<div class="karte"><div class="bogenKopf"><div><div class="muted klein">${esc([S.titel,S.klasse,S.fach].filter(Boolean).join(' · ')||'Bewertungsbogen')}</div><h2 style="margin:2px 0 0">${esc(s.name)}</h2></div>
+    <div class="zeile"><button class="klein" data-nav="-1" ${idx<=0?'disabled':''}>◀ Vorheriger</button><span class="muted klein">${idx+1} / ${S.schueler.length}</span><button class="klein" data-nav="1" ${idx>=S.schueler.length-1?'disabled':''}>Nächster ▶</button><button class="klein" data-drucken="1">Bogen drucken</button></div></div>
+    ${gewSumme()!==100?`<div class="hinweis err" style="margin-bottom:10px">Die Gewichtung der Teilaufgaben ergibt ${fmt(gewSumme())} % statt 100 %.</div>`:''}
+    <div class="bogenGrid" style="--n:${b.anz}">`;
+  for(let a=0;a<b.anz;a++){
+    h+=`<div class="bogenAufg"><h4>Teilaufgabe ${a+1} <span class="muted">· ${fmt(b.gew[a])} %</span></h4>
+      <table class="bogenTab"><thead><tr><th>Kriterium</th><th class="r">%</th><th class="ek">${b.zweit?'1. Korr.':'Punkte'}</th>${b.zweit?'<th class="zk">2. Korr.</th>':''}</tr></thead><tbody>`;
+    KRIT.forEach((kr,c)=>{ h+=`<tr><td>${esc(kr.name)}</td><td class="r muted">${kr.gew}</td>${wer.map(w=>{ const v=((bw[w]||[])[a]||[])[c]; return `<td><input class="bgIn ${w}" data-w="${w}" data-a="${a}" data-c="${c}" data-ord="${(w==='e'?0:100)+a*3+c}" inputmode="numeric" value="${v==null?'':v}"></td>`; }).join('')}</tr>`; });
+    h+=`<tr class="su"><td>Summe</td><td></td>${wer.map(w=>`<td id="su_${w}_${a}"></td>`).join('')}</tr><tr class="su"><td>Teilaufgabe (× ${fmt(b.gew[a])} %)</td><td></td>${wer.map(w=>`<td id="te_${w}_${a}"></td>`).join('')}</tr></tbody></table>
+      <div class="gutachten" id="gut_${a}"></div></div>`;
+  }
+  h+=`</div><div id="fuss"></div></div>`;
+  $('bwBogen').innerHTML=h; aktualisieren();
+}
+function aktualisieren(){
+  const sid=S.aktiv, b=S.bogen, wer=b.zweit?['e','z']:['e'], erg={}; wer.forEach(w=>erg[w]=korrektor(sid,w));
+  for(let a=0;a<b.anz;a++){
+    wer.forEach(w=>{ const x=erg[w].aufg[a]; $(`su_${w}_${a}`).textContent=x.summe==null?'':fmt2(x.summe); $(`te_${w}_${a}`).textContent=x.teil==null?'':fmt2(x.teil); });
+    const t=wer.map(w=>gutachten(sid,a,w).map(x=>`<p class="${w}">${esc(x)}</p>`).join('')).join('');
+    $(`gut_${a}`).innerHTML=`<div class="klein muted" style="font-weight:600;margin-bottom:4px">Wortgutachten Teilaufgabe ${a+1}</div>`+(t||'<p class="muted klein">Erscheint, sobald Punkte eingetragen sind.</p>');
+  }
+  const p=punkte(sid);
+  $('fuss').innerHTML=`<div class="bogenErg"><div>Punkte Erstkorrektor<b>${erg.e.gesamt==null?'–':fmt2(erg.e.gesamt)}</b></div>${b.zweit?`<div>Punkte Zweitkorrektor<b>${erg.z.gesamt==null?'–':fmt2(erg.z.gesamt)}</b></div>`:''}<div class="np ${notenKlasse(p)}">Notenpunkte<b>${p==null?'–':p}</b></div></div>
+    ${offenZweit(sid)?'<div class="hinweis warn">Die Zweitkorrektur ist noch nicht vollständig: Jedes Kriterium braucht auch eine Bewertung des 2. Korrektors.</div>':''}
+    <div class="gutachten" style="margin-top:12px"><div class="klein muted" style="font-weight:600;margin-bottom:4px">Gesamtwürdigung</div>${p==null?'<p class="muted klein">Erscheint, sobald alle Kriterien des Erstkorrektors bewertet sind.</p>':`<p>${esc(formulierung('gesamt',p))}</p>`}</div>`;
+}
+$('bwBogen').addEventListener('input',e=>{
+  const el=e.target; if(!el.classList.contains('bgIn')) return;
+  const t=el.value.trim(), v=zahl(t), ok=t===''||(v!=null&&Number.isInteger(v)&&v>=0&&v<=15);
+  el.classList.toggle('falsch',!ok); if(!ok){ toast('Ganze Punkte von 0 bis 15.'); return; }
+  const w=el.dataset.w, a=+el.dataset.a, c=+el.dataset.c;
+  const s=S.bw[S.aktiv]=S.bw[S.aktiv]||{}; const arr=s[w]=s[w]||[]; const ta=arr[a]=arr[a]||[];
+  ta[c]=t===''?null:v;
+  geaendert(); aktualisieren(); zeigeListe();
+});
+$('bwBogen').addEventListener('keydown',e=>{
+  const el=e.target; if(!el.classList.contains('bgIn')||e.key!=='Enter') return; e.preventDefault();
+  const alle=[...$('bwBogen').querySelectorAll('input.bgIn')].sort((x,y)=>x.dataset.ord-y.dataset.ord);
+  const n=alle[alle.indexOf(el)+(e.shiftKey?-1:1)];
+  if(n){ n.focus(); n.select(); } else if(!e.shiftKey){ const b=$('bwBogen').querySelector('[data-nav="1"]'); if(b&&!b.disabled){ b.click(); } }
+});
+$('bwBogen').addEventListener('click',e=>{
+  const n=e.target.closest('[data-nav]');
+  if(n){ const i=S.schueler.findIndex(s=>s.id===S.aktiv)+Number(n.dataset.nav); if(S.schueler[i]){ S.aktiv=S.schueler[i].id; geaendert(); zeigeListe(); zeigeBogen(); fokusErstes(); } return; }
+  if(e.target.closest('[data-drucken]')) drucken(druckBogen(S.aktiv));
+});
+
+/* ---------- Reiter: Übersicht ---------- */
+function zeigeUebersicht(){
+  const b=S.bogen; const ps=[]; const anzahl=new Array(16).fill(0);
+  let h=`<div class="karte"><div class="zeile" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">Übersicht${S.titel?' – '+esc(S.titel):''}</h2>
+    <div class="zeile"><button class="klein" id="btnListeDruck">Liste drucken</button><button class="klein primary" id="btnAlleDruck">Alle Bögen drucken</button></div></div>`;
+  if(!S.schueler.length){ $('uebersicht').innerHTML=h+'<p>Noch keine Schüler.</p></div>'; return; }
+  h+=`<div style="overflow:auto"><table class="liste"><thead><tr><th>Nr.</th><th class="l">Name</th>${Array.from({length:b.anz},(_,a)=>`<th>A${a+1}<br><span style="font-weight:400">${fmt(b.gew[a])} %</span></th>`).join('')}<th>Erstkorr.</th>${b.zweit?'<th>Zweitkorr.</th>':''}<th>Punkte</th></tr></thead><tbody>`;
+  S.schueler.forEach((s,i)=>{ const e=korrektor(s.id,'e'), z=b.zweit?korrektor(s.id,'z'):null, p=punkte(s.id); if(p!=null){ ps.push(p); anzahl[p]++; }
+    h+=`<tr><td class="muted">${i+1}</td><td class="l"><button class="link" data-oeffnen="${s.id}">${esc(s.name)}</button></td>${e.aufg.map(x=>`<td>${x.summe==null?'':fmt2(x.summe)}</td>`).join('')}<td><b>${e.gesamt==null?'':fmt2(e.gesamt)}</b></td>${z?`<td style="${offenZweit(s.id)?'background:var(--warn-soft)':''}">${z.gesamt==null?(offenZweit(s.id)?'fehlt':''):fmt2(z.gesamt)}</td>`:''}<td class="${notenKlasse(p)}"><b>${p==null?'':p}</b></td></tr>`; });
+  const schnitt=ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:null;
+  h+=`</tbody></table></div>
+    <h3 style="margin-top:18px">Notenspiegel</h3><div style="overflow:auto"><table class="liste"><tr><th>Punkte</th>${Array.from({length:16},(_,i)=>`<th>${15-i}</th>`).join('')}</tr><tr><th>Anzahl</th>${Array.from({length:16},(_,i)=>`<td>${anzahl[15-i]||''}</td>`).join('')}</tr></table></div>
+    <p>Durchschnitt: <b>${schnitt==null?'–':fmt(schnitt,2)}</b> · bewertet: <b>${ps.length}</b> von ${S.schueler.length}</p></div>`;
+  $('uebersicht').innerHTML=h;
+}
+$('uebersicht').addEventListener('click',e=>{
+  const o=e.target.closest('[data-oeffnen]'); if(o){ S.aktiv=o.dataset.oeffnen; zeige('bewertung'); return; }
+  if(e.target.id==='btnAlleDruck'){ const l=S.schueler.filter(s=>korrektor(s.id,'e').irgend); if(!l.length){ toast('Noch keine Bögen ausgefüllt.'); return; } drucken(l.map((s,i)=>`<div style="${i?'break-before:page;':''}">${druckBogen(s.id)}</div>`).join('')); }
+  if(e.target.id==='btnListeDruck') druckListe();
+});
+
+/* ---------- Reiter: Textbausteine ---------- */
+let textKat='darst';
+function zeigeTexte(){
+  const l=(S.formulierungen&&S.formulierungen[textKat])||FORM_STANDARD[textKat];
+  $('texte').innerHTML=`<div class="karte" style="max-width:980px"><h2>Textbausteine</h2><p>Aus diesen Texten entsteht das Wortgutachten (je Kriterium und Punktzahl) und die Gesamtwürdigung. Änderungen werden sofort gespeichert.</p>
+    <div class="zeile" style="margin:10px 0">${Object.entries(FORM_KAT).map(([k,n])=>`<button class="${k===textKat?'primary':''}" data-kat="${k}">${esc(n)}${S.formulierungen&&S.formulierungen[k]?' ✎':''}</button>`).join('')}</div>
+    <div style="display:grid;gap:10px">${Array.from({length:16},(_,i)=>15-i).map(p=>`<label class="feld">${p} Punkte<textarea data-p="${p}" rows="2">${esc(l[p])}</textarea></label>`).join('')}</div>
+    <div class="zeile" style="margin-top:14px"><button class="danger" id="btnStd" ${S.formulierungen&&S.formulierungen[textKat]?'':'disabled'}>Standardtexte wiederherstellen</button></div></div>`;
+}
+$('texte').addEventListener('click',e=>{
+  const k=e.target.closest('[data-kat]'); if(k){ textKat=k.dataset.kat; zeigeTexte(); return; }
+  if(e.target.id==='btnStd' && confirm(`Standardtexte für „${FORM_KAT[textKat]}“ wiederherstellen?`)){ delete S.formulierungen[textKat]; geaendert(); zeigeTexte(); }
+});
+$('texte').addEventListener('input',e=>{
+  const el=e.target; if(el.dataset.p==null) return;
+  S.formulierungen=S.formulierungen||{};
+  if(!S.formulierungen[textKat]) S.formulierungen[textKat]=FORM_STANDARD[textKat].slice();
+  S.formulierungen[textKat][+el.dataset.p]=el.value; geaendert();
+  const b=$('btnStd'); if(b) b.disabled=false;
+});
+
+/* ---------- Druck ---------- */
+function drucken(html){ $('druck').innerHTML=html; window.print(); }
+function druckBogen(sid){
+  const s=S.schueler.find(x=>x.id===sid); if(!s) return '';
+  const b=S.bogen, wer=b.zweit?['e','z']:['e'], bw=S.bw[sid]||{}, erg={}; wer.forEach(w=>erg[w]=korrektor(sid,w));
+  const p=punkte(sid), L='text-align:left;', TH='background:#e3efef;', sp=b.zweit?2:1;
+  const zellen=f=>Array.from({length:b.anz},(_,a)=>wer.map(w=>`<td>${f(a,w)}</td>`).join('')).join('');
+  let t=`<table style="font-size:9pt"><tr><th style="${L}${TH}">Aufgabe</th><th style="${TH}">%</th>${Array.from({length:b.anz},(_,a)=>`<th colspan="${sp}" style="${TH}">${a+1}</th>`).join('')}</tr>
+    <tr><td style="${L}">Gewichtung [%]</td><td></td>${Array.from({length:b.anz},(_,a)=>`<td colspan="${sp}">${fmt(b.gew[a])}</td>`).join('')}</tr>
+    ${b.zweit?`<tr><td style="${L}">Korrektor</td><td></td>${Array.from({length:b.anz},()=>'<td>1</td><td>2</td>').join('')}</tr>`:''}
+    ${KRIT.map((kr,c)=>`<tr><td style="${L}">${esc(kr.name)}</td><td>${kr.gew}</td>${zellen((a,w)=>{ const v=(((bw[w]||[])[a])||[])[c]; return v==null?'':v; })}</tr>`).join('')}
+    <tr><td style="${L}"><b>Summe</b></td><td></td>${zellen((a,w)=>{ const x=erg[w].aufg[a]; return x.summe==null?'':fmt2(x.summe); })}</tr>
+    <tr><td style="${L}"><b>Teilaufgabe</b></td><td></td>${zellen((a,w)=>{ const x=erg[w].aufg[a]; return x.teil==null?'':fmt2(x.teil); })}</tr></table>
+    <table style="font-size:10pt;margin-top:8pt;width:auto;min-width:70%"><tr><td style="${L}">Punkte Erstkorrektor:</td><td><b>${erg.e.gesamt==null?'':fmt2(erg.e.gesamt)}</b></td></tr>
+    ${b.zweit?`<tr><td style="${L}">Punkte Zweitkorrektor:</td><td><b>${erg.z.gesamt==null?'':fmt2(erg.z.gesamt)}</b></td></tr>`:''}
+    <tr><td style="${L}background:#fff2cc"><b>Punkte:</b></td><td style="background:#fff2cc;font-size:13pt"><b>${p==null?'':p}</b></td></tr></table>
+    <div style="margin-top:22pt;font-size:9.5pt">1. Korrektor: ______________________________</div>
+    ${b.zweit?'<div style="margin-top:16pt;font-size:9.5pt">2. Korrektor: ______________________________</div>':''}`;
+  const gut=a=>wer.map(w=>gutachten(sid,a,w).map(x=>`<p style="margin:0 0 4pt;color:${w==='e'?'#c00000':'#006600'}">${esc(x)}</p>`).join('')).join('');
+  const g=`<table style="font-size:8pt;table-layout:fixed;width:100%"><tr>${Array.from({length:b.anz},(_,a)=>`<th style="${L}${TH}">Wortgutachten Teilaufgabe ${a+1}</th>`).join('')}</tr>
+    <tr style="vertical-align:top">${Array.from({length:b.anz},(_,a)=>`<td style="${L}height:250pt">${gut(a)}</td>`).join('')}</tr>
+    <tr><th style="${L}${TH}" colspan="${b.anz}">Gesamtwürdigung</th></tr><tr><td colspan="${b.anz}" style="${L}font-size:9pt;height:36pt;vertical-align:top">${p==null?'':esc(formulierung('gesamt',p))}</td></tr></table>`;
+  return `<div style="font-size:10pt;font-family:Arial,Helvetica,sans-serif"><div style="text-align:center;font-weight:700;font-size:12pt">${esc(S.schule)}</div>
+    <div style="text-align:center;font-weight:700;font-size:16pt;letter-spacing:1pt;margin:4pt 0 8pt">BEWERTUNGSBOGEN</div>
+    <table style="width:auto;min-width:60%;margin-bottom:8pt"><tr><td style="${L}border:none;padding-right:8pt">Schüler/in:</td><td style="${L}border:none"><b>${esc(s.name)}</b></td><td style="${L}border:none;padding:0 8pt 0 24pt">Klasse:</td><td style="${L}border:none"><b>${esc(S.klasse)}</b></td><td style="${L}border:none;padding:0 8pt 0 24pt">${esc([S.titel,S.fach].filter(Boolean).join(' · '))}</td><td style="${L}border:none">${datumText(S.datum)}</td></tr></table>
+    <table style="border:none;width:99%;table-layout:fixed"><colgroup><col style="width:40%"><col></colgroup><tr style="vertical-align:top"><td style="border:none;padding:0 10pt 0 0">${t}</td><td style="border:none;padding:0">${g}</td></tr></table></div>`;
+}
+function druckListe(){
+  const b=S.bogen, L='text-align:left;';
+  let h=`<div style="font-family:Arial,Helvetica,sans-serif;font-size:10pt"><h2 style="margin:0">${esc(S.titel||'Bewertungsbogen')} – ${esc(S.klasse)}</h2><div style="color:#555;margin-bottom:8pt">${esc(S.fach)} · ${datumText(S.datum)} · Gewichtung ${b.gew.slice(0,b.anz).map(x=>fmt(x)).join(' / ')} %</div>
+    <table><tr><th>Nr.</th><th style="${L}">Name</th>${Array.from({length:b.anz},(_,a)=>`<th>A${a+1}</th>`).join('')}<th>Erstkorr.</th>${b.zweit?'<th>Zweitkorr.</th>':''}<th>Punkte</th></tr>`;
+  S.schueler.forEach((s,i)=>{ const e=korrektor(s.id,'e'), z=b.zweit?korrektor(s.id,'z'):null, p=punkte(s.id);
+    h+=`<tr><td>${i+1}</td><td style="${L}">${esc(s.name)}</td>${e.aufg.map(x=>`<td>${x.summe==null?'':fmt2(x.summe)}</td>`).join('')}<td>${e.gesamt==null?'':fmt2(e.gesamt)}</td>${z?`<td>${z.gesamt==null?'':fmt2(z.gesamt)}</td>`:''}<td><b>${p==null?'':p}</b></td></tr>`; });
+  drucken(h+'</table></div>');
+}
+
+/* ---------- Start ---------- */
+zeige(S.schueler.length?'bewertung':'arbeit');
+if(S.geaendert) $('status').textContent='✓ Auf diesem Gerät gespeichert';
+</script>
+</body>
+</html>
