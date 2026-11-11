@@ -163,6 +163,29 @@ th .unter{display:block;font-weight:400;color:var(--muted);font-size:11px}
 .refHinweis.ok{background:var(--ok-soft);color:var(--ok)} .refHinweis.warn{background:var(--warn-soft);color:var(--warn)}
 table.raster input.zelle.ref{background:#efe9f7;color:#4e2f86;font-weight:650}
 
+/* Bewertungsbogen (Fenster) */
+dialog.bogen{max-width:1240px;width:calc(100% - 24px)}
+dialog.bogen .inhalt{max-height:78vh;padding:18px 22px 6px}
+.bogenKopf{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.bogenGrid{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:14px}
+.bogenAufg{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fbfaf7}
+.bogenAufg h4{margin:0 0 8px;font-size:15px}
+.bogenTab{width:100%;border-collapse:collapse;font-size:13.5px}
+.bogenTab th{font-size:11.5px;color:var(--muted);font-weight:600;text-align:left;padding:3px 4px;border-bottom:1px solid var(--line)}
+.bogenTab td{padding:4px;border-bottom:1px solid var(--line2)} .bogenTab .r{text-align:right}
+.bogenTab th.ek{color:#b00000} .bogenTab th.zk{color:#006600}
+.bogenTab tr.su td{font-weight:650;text-align:center} .bogenTab tr.su td:first-child{text-align:left}
+.bogenTab input.bgIn{width:58px;text-align:center;padding:6px 4px;font-weight:650}
+.bogenTab input.bgIn.e{color:#b00000} .bogenTab input.bgIn.z{color:#006600}
+.bogenTab input.bgIn.falsch{background:var(--err-soft);border-color:var(--err)}
+.gutachten{margin-top:10px;font-size:13px;line-height:1.4;background:#fff;border:1px solid var(--line2);border-radius:8px;padding:8px 10px}
+.gutachten p{margin:0 0 6px} .gutachten p.e{color:#b00000} .gutachten p.z{color:#006600}
+.gutachten.gesamt{margin-top:12px}
+.bogenErg{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.bogenErg div{background:#f7f6f2;border-radius:8px;padding:8px 14px;font-size:12.5px;color:var(--muted);min-width:150px}
+.bogenErg b{display:block;font-size:20px;color:var(--ink)}
+.bogenErg .np{background:var(--accent-soft)} .bogenErg .np b{color:var(--accent);font-size:24px}
+
 /* Schüler */
 .schuelerListe{list-style:none;margin:0;padding:0;columns:2;column-gap:28px}
 .schuelerListe li{display:flex;justify-content:space-between;gap:10px;padding:6px 4px;border-bottom:1px solid var(--line2);break-inside:avoid}
@@ -198,6 +221,7 @@ body.druckmodus #druck td.l,body.druckmodus #druck th.l{text-align:left}
   #druck tr{break-inside:avoid}
   @page{size:A4 landscape;margin:12mm}
 }
+@media (max-width:1000px){ .bogenGrid{grid-template-columns:1fr} }
 @media (max-width:640px){
   .krit{grid-template-columns:1fr;gap:8px} .kritKopf{display:none}
 }
@@ -305,6 +329,7 @@ body.druckmodus #druck td.l,body.druckmodus #druck th.l{text-align:left}
 
 <div id="druck"></div>
 <dialog id="dlg"><div class="inhalt"><h3 id="dlgTitel"></h3><div class="text" id="dlgText"></div><div id="dlgForm"></div></div><div class="knoepfe" id="dlgKnoepfe"></div></dialog>
+<dialog id="dlgBogen" class="bogen"><div class="inhalt" id="dlgBogenInhalt"></div><div class="knoepfe"><button data-bgaktion="drucken">Bogen drucken</button><button class="primary" data-bgaktion="schliessen">Fertig</button></div></dialog>
 <div id="toast"></div>
 <input type="file" id="dateiWahl" hidden>
 
@@ -399,7 +424,27 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
   // ---------- Ein Leistungsnachweis ----------
   // nw: {modus:'aufgaben'|'direkt', aufgaben:[be,…], werte:{sid:[…]}, direkt:{sid:p}, schluessel}
   function gesamtBE(nw) { return summe((nw.aufgaben || []).map(Number)); }
+  // Bewertungsbogen: je Teilaufgabe 3 Kriterien (0–15 NP), gewichtet 17/33/50 %, Teilaufgaben nach nw.bogen.gew
+  var BOGEN_KRIT_GEW = [17, 33, 50];
+  function bogenKorrektor(nw, sid, wer) {
+    var b = nw.bogen || { anz: 3, gew: [45, 35, 20] };
+    var bw = (nw.bw && nw.bw[sid] && nw.bw[sid][wer]) || [];
+    var aufg = [], ges = 0, voll = true, irgend = false;
+    for (var a = 0; a < b.anz; a++) {
+      var v = bw[a] || [], ok = true;
+      for (var c = 0; c < 3; c++) { if (istZahl(v[c])) irgend = true; else ok = false; }
+      var su = ok ? p15(BOGEN_KRIT_GEW[0] * v[0] / 100 + BOGEN_KRIT_GEW[1] * v[1] / 100 + BOGEN_KRIT_GEW[2] * v[2] / 100) : null;
+      var teil = ok ? p15(su * (Number(b.gew[a]) || 0) / 100) : null;
+      if (ok) ges += teil; else voll = false;
+      aufg.push({ summe: su, teil: teil });
+    }
+    return { aufg: aufg, gesamt: voll ? p15(ges) : null, irgend: irgend };
+  }
   function ergebnis(nw, sid) {
+    if (nw.modus === 'bogen') {
+      var e = bogenKorrektor(nw, sid, 'e');
+      return { summe: null, anteil: null, punkte: e.gesamt == null ? null : Math.max(0, Math.min(15, round(e.gesamt, 0))) };
+    }
     if (nw.modus === 'direkt') {
       var p = nw.direkt ? nw.direkt[sid] : null;
       return { summe: null, anteil: null, punkte: istZahl(p) ? p : null };
@@ -445,7 +490,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
   root.NotenCore = {
     roundUp: roundUp, round: round, SCHLUESSEL: SCHLUESSEL, NOTEN_TEXT: NOTEN_TEXT,
-    grenzen: grenzen, punkte: punkte, beTabelle: beTabelle, gesamtBE: gesamtBE, ergebnis: ergebnis,
+    grenzen: grenzen, punkte: punkte, beTabelle: beTabelle, gesamtBE: gesamtBE, ergebnis: ergebnis, bogenKorrektor: bogenKorrektor,
     notenspiegel: notenspiegel, halbjahr: halbjahr, jahr: jahr, klassenschnitt: klassenschnitt, istZahl: istZahl
   };
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -945,7 +990,7 @@ function zeigeNwEditor(){
      <label class="feld">Bezeichnung<input data-nwf="titel" value="${esc(n.titel)}" placeholder="${esc(nwTitel(k,{...n,titel:''}))}"></label>
      <label class="feld">Geschrieben am<input type="date" data-nwf="geschrieben" value="${esc(n.geschrieben)}"></label>
      <label class="feld">Zurückgegeben am<input type="date" data-nwf="zurueck" value="${esc(n.zurueck)}"></label>
-     <label class="feld">Bewertung<select data-nwf="modus"><option value="aufgaben"${n.modus==='aufgaben'?' selected':''}>Bewertungseinheiten (BE)</option><option value="direkt"${n.modus==='direkt'?' selected':''}>Wortgutachten</option></select></label>
+     <label class="feld">Bewertung<select data-nwf="modus"><option value="aufgaben"${n.modus==='aufgaben'?' selected':''}>Bewertungseinheiten (BE)</option><option value="direkt"${n.modus==='direkt'?' selected':''}>Wortgutachten</option><option value="bogen"${n.modus==='bogen'?' selected':''}>Bewertungsbogen</option></select></label>
      ${n.modus==='aufgaben'?`<label class="feld">Notenschlüssel<select data-nwf="schluessel">${schl}</select></label>`:''}
    </div>`;
   if(n.modus==='aufgaben'){
@@ -953,6 +998,7 @@ function zeigeNwEditor(){
       <button class="klein" data-aktion="aufgabePlus">+ Aufgabe</button><button class="klein" data-aktion="aufgabeMinus" ${n.aufgaben.length<=1?'disabled':''}>− Aufgabe</button>
       ${!(be>0)?'<span class="muted klein">Trage zuerst in der grauen Zeile die BE pro Aufgabe ein.</span>':''}</div>`;
   }
+  if(n.modus==='bogen'){ bogenInit(n); h+=bogenEinstellungenHTML(n)+`</div>`+bogenTabelleHTML(k,n); ed.innerHTML=h.replace('data-aktion="druckNachweis">Drucken</button>','data-aktion="druckNachweis">Liste drucken</button><button class="klein" data-aktion="bogenAlleDrucken">Alle Bögen drucken</button>'); zeigeNwSeite(); return; }
   if(n.modus==='direkt') h+=`<p class="klein" style="margin:12px 0 0">Bewertung mit Wortgutachten: Trage pro Schüler nur die Gesamtnote in Notenpunkten (0–15) ein.</p>`;
   h+=`</div><div id="nwInhalt"${n.modus==='direkt'?' style="grid-template-columns:1fr"':''}><div class="tabWrap"><table class="raster" id="tabNw"><thead><tr><th class="name">Name</th>`;
   if(n.modus==='aufgaben'){
@@ -985,6 +1031,9 @@ function zeigeNwEditor(){
 function zeigeNwSeite(){
   const k=kurs(), n=k.nachweise.find(x=>x.id===A.nwId); if(!n) return;
   if(n.modus==='direkt'){ $('nwSeite').innerHTML=''; return; }
+  if(n.modus==='bogen'){ const sp=C.notenspiegel(rechenNw(n), aktiveSchueler(k).map(s=>s.id)); let h=`<div class="karte" style="padding:14px 16px"><h3>Notenspiegel</h3><table class="schluesselTab"><thead><tr><th>Punkte</th><th>Note</th><th class="r">Anzahl</th></tr></thead><tbody>`;
+    for(let p=15;p>=0;p--) h+=`<tr${notenKlasse(p)?` class="${notenKlasse(p)}"`:''}><td>${p}</td><td>${C.NOTEN_TEXT[p]}</td><td class="r"><b>${sp.anzahl[p]||''}</b></td></tr>`;
+    h+=`</tbody></table><div class="kennz"><div>Durchschnitt<b>${sp.schnitt==null?'–':fmt(sp.schnitt,2)}</b></div><div>Teilnehmer<b>${sp.teilnehmer}</b></div></div></div>`; $('nwSeite').innerHTML=h; return; }
   const RN=rechenNw(n), be=C.gesamtBE(RN), sp=C.notenspiegel(RN, aktiveSchueler(k).map(s=>s.id));
   const tab = n.modus==='aufgaben' ? C.beTabelle(be, RN.schluessel) : null;
   let h=`<div class="karte" style="padding:14px 16px"><h3>Notenspiegel</h3><table class="schluesselTab"><thead><tr><th>Punkte</th><th>Note</th>${tab?'<th class="r">BE</th>':''}<th class="r">Anzahl</th></tr></thead><tbody>`;
@@ -999,9 +1048,17 @@ function zeigeNwSeite(){
 }
 $('nwEditor').addEventListener('change', e=>{
   const el=e.target, k=kurs(), n=k.nachweise.find(x=>x.id===A.nwId); if(!n) return;
+  if(el.dataset.bg){
+    const b=n.bogen;
+    if(el.dataset.bg==='anz'){ const neu=+el.value; b.anz=neu; b.gew=(BOGEN_GEW_STANDARD[neu]||[100]).slice(); toast(`${neu} Teilaufgabe${neu>1?'n':''}, Gewichtung ${b.gew.join(' / ')} %`); }
+    else if(el.dataset.bg==='gew'){ const v=zahl(el.value); if(v==null||v<0){ toast('Bitte eine Zahl eintragen.'); } else b.gew[+el.dataset.a]=v; }
+    else if(el.dataset.bg==='zweit') b.zweit=el.checked;
+    geaendert(); zeigeNwEditor(); zeigeNachweise(); return;
+  }
   if(el.dataset.nwf){
     const f=el.dataset.nwf;
     if(f==='modus' && el.value==='direkt' && Object.keys(n.werte).length){ /* Werte bleiben erhalten */ }
+    if(f==='modus' && el.value==='bogen') bogenInit(n);
     n[f]=el.value; geaendert();
     if(['schluessel','modus'].includes(f)) zeigeNwEditor(); else if(f==='titel'||f==='geschrieben') zeigeNachweise();
     return;
@@ -1088,6 +1145,249 @@ async function schuelerNeu(){
   if(!s){ toast('Nichts ausgewählt.'); return; }
   const da=k.schueler.find(x=>x.id===s.id); if(da){ da.entfernt=false; } else k.schueler.push({id:s.id, nn:s.nn, vn:s.vn, manuell:s.manuell||undefined});
   geaendert(); zeigeSchueler(); toast(`${s.nn}, ${s.vn} hinzugefügt.`);
+}
+
+/* ================= Bewertungsbogen (Kriterien + Wortgutachten) ================= */
+// Fester Aufbau wie in der Excel-Vorlage: pro Teilaufgabe 3 Kriterien (0–15 NP) mit 17/33/50 %.
+// Endpunkte = gerundeter Wert des Erstkorrektors. Zweitkorrektur (Abitur) optional.
+const SCHULE = 'Staatliche Fachoberschule Altötting';
+const BOGEN_KRIT = [
+  { key:'darst', name:'1. Art der Darstellung', gew:17 },
+  { key:'kennt', name:'2. Reproduktion der (Er-)Kenntnisse', gew:33 },
+  { key:'anw',   name:'3. Anwendung der (Er-)Kenntnisse', gew:50 },
+];
+const BOGEN_GEW_STANDARD = { 1:[100], 2:[50,50], 3:[45,35,20] };
+const FORMULIERUNGEN_STANDARD = {
+"darst": [
+"Die Art der Darstellung entspricht nicht mehr den Anforderungen. Die Aussagen sind völlig unverständlich und unklar.",
+"Die Art der Darstellung zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen. Zusammenhänge werden kaum deutlich.",
+"Die Art der Darstellung zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen. Die Aussagen sind verschwommen und uneindeutig.",
+"Die Art der Darstellung zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen. Die Darstellungen sind verschwommen und kaum strukturiert.",
+"Die Art der Darstellung zeigt zwar Schwächen, entspricht aber im Ganzen noch den Anforderungen. Zusammenhänge werden meist undeutlich dargestellt.",
+"Die Art der Darstellung zeigt zwar Schwächen, entspricht aber im Ganzen noch den Anforderungen. Zusammenhänge werden nur teilweise deutlich dargestellt.",
+"Die Art der Darstellung zeigt zwar Schwächen, entspricht aber im Ganzen noch den Anforderungen. Die Darstellungen sind nur wenig prägnant und strukturiert.",
+"Die Art der Darstellung entspricht im Allgemeinen den Anforderungen. Die Aussagen sind meist klar und präzise formuliert.",
+"Die Art der Darstellung entspricht im Allgemeinen den Anforderungen. Die Aussagen sind meist eindeutig und präzise formuliert.",
+"Die Art der Darstellung entspricht im Allgemeinen den Anforderungen. Die Aussage sind meist klar und eindeutig.",
+"Die Art der Darstellung entspricht voll den Anforderungen. Die Aussagen sind mit wenigen Ausnahmen stets klar und präzise formuliert.",
+"Die Art der Darstellung entspricht voll den Anforderungen. Die Aussagen sind mit wenigen Ausnahmen eindeutig und präzise formuliert.",
+"Die Art der Darstellung entspricht voll den Anforderungen. Die Aussagen sind mit wenigen Ausnahmen klar und eindeutig.",
+"Die Art der Darstellung entspricht in einem besonderen Maße den Anforderungen. Die Aussagen sind stets klar und präzise formuliert.",
+"Die Art der Darstellung entspricht in einem besonderen Maße den Anforderungen. Die Aussagen sind stets eindeutig und präzise formuliert.",
+"Die Art der Darstellung entspricht in einem besonderen Maße den Anforderungen. Die Aussagen sind in allen Teilen klar und eindeutig."
+],
+"kennt": [
+"Die Ausarbeitung der theoretischen Grundlagen entspricht nicht den Anforderungen und lässt selbst die notwendigen Grundkenntnisse nicht erkennen. Die Definitionen und Erklärungen sind völlig ungenau und sehr fragmentarisch.",
+"Die Reproduktion der Kenntnisse zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen, da bezüglich der Fachbegriffe große Wissenslücken deutlich werden.",
+"Die Reproduktion der Kenntnisse zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen, da Inhalte nur fragmentarisch und meist ungenau beschrieben werden.",
+"Die Reproduktion der Kenntnisse zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen, da Fachbegriffe meist falsch dargestellt werden.",
+"Die Reproduktion der Kenntnisse weist zwar Schwächen auf, entspricht jedoch im Ganzen noch den Anforderungen, da Fachbegriffe häufig falsch dargestellt werden und Wissenslücken deutlich werden.",
+"Die Reproduktion der Kenntnisse weist zwar Schwächen auf, entspricht jedoch im Ganzen noch den Anforderungen, da Inhalte nur oberflächlich und zuweilen ungenau beschrieben werden.",
+"Die Reproduktion der Kenntnisse weist zwar Schwächen auf, entspricht jedoch im Ganzen noch den Anforderungen, da Fachbegriffe nur teilweise korrekt dargestellt werden.",
+"Die Reproduktion der Kenntnisse entspricht im Allgemeinen den Anforderungen, da Inhalte größtenteils zutreffend dargestellt werden.",
+"Die Reproduktion der Kenntnisse entspricht im Allgemeinen den Anforderungen, da Inhalte meist deutlich dargestellt werden.",
+"Die Reproduktion der Kenntnisse entspricht im Allgemeinen den Anforderungen, da Fachbegriffe größtenteils korrekt dargestellt werden.",
+"Die Reproduktion der Kenntnisse entspricht voll den Anforderungen, da Fachbegriffe mit wenigen Ausnahmen sachgerecht definiert werden.",
+"Die Reproduktion der Kenntnisse entspricht voll den Anforderungen, da Fachbegriffe mit wenigen Ausnahmen zutreffend beschrieben werden.",
+"Die Reproduktion der Kenntnisse entspricht voll den Anforderungen, da Fachbegriffe mit wenigen Ausnahmen korrekt dargestellt werden.",
+"Die Reproduktion der Kenntnisse entspricht in besonderem Maße den Anforderungen. Fachbegriffe werden stets korrekt erläutert.",
+"Die Reproduktion der Kenntnisse entspricht in besonderem Maße den Anforderungen. Inhalte werden stets genau und zutreffend beschrieben.",
+"Die Ausarbeitung der theoretischen Kenntnisse entspricht in besonderem Maße den Anforderungen. Fachbegriffe werden uneingeschränkt korrekt dargestellt."
+],
+"anw": [
+"Die Qualität der Anwendung entspricht nicht den Anforderungen und lässt selbst die notwendigen Grundkenntnisse nicht erkennen. Die Transferbezüge sind nicht folgerichtig und nicht sachgerecht.",
+"Die Anwendung der Kenntnisse zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen, denn der Bezug zum Fallbeispiel erfolgt wenig überzeugend.",
+"Die Anwendung der Kenntnisse zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen, denn der Bezug zum Fallbeispiel erfolgt kaum überzeugend.",
+"Die Anwendung der Kenntnisse zeigt erhebliche Mängel und entspricht nicht mehr den Anforderungen, denn der Bezug zum Fallbeispiel ist kaum überzeugend.",
+"Die Anwendung der Kenntnisse weist zwar Schwächen auf, entspricht aber im Ganzen noch den Anforderungen, denn der Bezug zum Fallbeispiel erfolgt nur teilweise überzeugend.",
+"Die Anwendung der Kenntnisse weist zwar Schwächen auf, entspricht aber im Ganzen noch den Anforderungen, denn der Bezug zum Fallbeispiel ist nur in Teilen überzeugend.",
+"Die Anwendung der Kenntnisse weist zwar Schwächen auf, entspricht aber im Ganzen noch den Anforderungen, denn der Bezug zum Fallbeispiel ist nur teilweise überzeugend.",
+"Die Anwendung der Kenntnisse entspricht im Allgemeinen den Anforderungen, denn der Bezug zum Fallbeispiel erfolgt nicht immer überzeugend.",
+"Die Anwendung der Kenntnisse entspricht im Allgemeinen den Anforderungen, denn der Bezug zum Fallbeispiel gelingt meist überzeugend.",
+"Die Anwendung der Kenntnisse entspricht im Allgemeinen den Anforderungen, denn der Bezug zum Fallbeispiel gelingt größtenteils überzeugend.",
+"Die Anwendung der Kenntnisse entspricht voll den Anforderungen, denn der Bezug zum Fallbeispiel erfolgt bis auf wenige Ausnahmen überzeugend.",
+"Die Anwendung der Kenntnisse entspricht voll den Anforderungen, denn der Bezug zum Fallbeispiel gelingt bis auf wenige Ausnahmen sachgerecht.",
+"Die Anwendung der Kenntnisse entspricht voll den Anforderungen, denn der Bezug zum Fallbeispiel gelingt bis auf wenige Ausnahmen überzeugend.",
+"Die Anwendung der Kenntnisse entspricht in besonderem Maße den Anforderungen, denn der Bezug zum Fallbeispiel gelingt stets sehr umfassend und sachgerecht.",
+"Die Anwendung der Kenntnisse entspricht in besonderem Maße den Anforderungen, denn der Bezug zum Fallbeispiel gelingt stets äußerst überzeugend.",
+"Die Anwendung der Kenntnisse entspricht in besonderem Maße den Anforderungen, denn ein sinnvoller Bezug zum Fallbeispiel ist jederzeit vorhanden."
+],
+"gesamt": [
+"In Gesamtheit liegt eine Leistung vor, die Mängel aufweist und den Anforderungen nicht mehr entspricht und auch grundlegende Kenntnisse nicht mehr zeigt und dementsprechend mit 0 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die Mängel aufweist und den Anforderungen nicht mehr entspricht aber grundlegende Kenntnisse aufzeigt und dementsprechend mit 1 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die Mängel aufweist und den Anforderungen nicht mehr entspricht aber grundlegende Kenntnisse aufzeigt und dementsprechend mit 2 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die Mängel aufweist und den Anforderungen nicht mehr entspricht aber grundlegende Kenntnisse aufzeigt und dementsprechend mit 3 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die zwar Mängel aufweist, den Anforderungen aber noch entspricht und dementsprechend mit 4 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die zwar Mängel aufweist, den Anforderungen aber noch entspricht und dementsprechend mit 5 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die zwar Mängel aufweist, den Anforderungen aber noch entspricht und dementsprechend mit 6 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen im Wesentlichen entspricht und dementsprechend mit 7 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen im Wesentlichen entspricht und dementsprechend mit 8 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen im Wesentlichen entspricht und dementsprechend mit 9 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen voll entspricht und dementsprechend mit 10 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen voll entspricht und dementsprechend mit 11 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen voll entspricht und dementsprechend mit 12 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen in besonderem Maße entspricht und dementsprechend mit 13 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen in besonderem Maße entspricht und dementsprechend mit 14 Notenpunkten zu bewerten ist.",
+"In Gesamtheit liegt eine Leistung vor, die den Anforderungen in besonderem Maße entspricht und dementsprechend mit 15 Notenpunkten zu bewerten ist."
+]
+};   // je Kategorie Texte für 0..15 Punkte
+const FORM_KAT = { darst:'Art der Darstellung', kennt:'Reproduktion der Kenntnisse', anw:'Anwendung der Kenntnisse', gesamt:'Gesamtwürdigung' };
+function formulierung(kat, p){ const l=(D.formulierungen && D.formulierungen[kat]) || FORMULIERUNGEN_STANDARD[kat]; return C.istZahl(p) ? (l[p]||'') : ''; }
+function bogenInit(n){
+  if(!n.bogen) n.bogen={ anz:3, gew:BOGEN_GEW_STANDARD[3].slice(), zweit:false };
+  if(!n.bw) n.bw={};
+}
+function bogenGewSumme(n){ return n.bogen.gew.slice(0,n.bogen.anz).reduce((a,b)=>a+(Number(b)||0),0); }
+function bogenEinstellungenHTML(n){
+  const b=n.bogen, sum=bogenGewSumme(n);
+  return `<div class="zeile" style="gap:14px;margin-top:12px;align-items:flex-end">
+    <label class="feld" style="width:150px">Teilaufgaben<select data-bg="anz">${[1,2,3].map(x=>`<option value="${x}"${b.anz===x?' selected':''}>${x}</option>`).join('')}</select></label>
+    ${Array.from({length:b.anz},(_,a)=>`<label class="feld" style="width:120px">Gewichtung A${a+1} (%)<input data-bg="gew" data-a="${a}" inputmode="decimal" value="${fmt(b.gew[a])}"></label>`).join('')}
+    <label class="zeile" style="gap:6px;font-size:14px;padding-bottom:8px;width:auto"><input type="checkbox" data-bg="zweit" style="width:auto"${b.zweit?' checked':''}> Zweitkorrektur (Abitur)</label>
+    ${sum!==100?`<span class="klein" style="color:var(--err);padding-bottom:8px"><b>Summe der Gewichtung: ${fmt(sum)} % (muss 100 % sein)</b></span>`:''}
+  </div>
+  <p class="klein" style="margin:10px 0 0">Kriterien je Teilaufgabe: Darstellung 17 %, Reproduktion 33 %, Anwendung 50 % (je 0–15 Punkte). Die Note ist der gerundete Wert des Erstkorrektors. Name antippen öffnet den Bewertungsbogen.</p>`;
+}
+function bogenTabelleHTML(k,n){
+  const b=n.bogen, sch=aktiveSchueler(k), RN=rechenNw(n);
+  let h=`<div id="nwInhalt"><div class="tabWrap"><table class="raster" id="tabNw"><thead><tr><th class="name">Name</th>`;
+  for(let a=0;a<b.anz;a++) h+=`<th>A${a+1}<span class="unter">${fmt(b.gew[a])} %</span></th>`;
+  h+=`<th>Erstkorr.</th>${b.zweit?'<th>Zweitkorr.</th>':''}<th>Punkte</th><th></th></tr></thead><tbody>`;
+  sch.forEach((s,i)=>{
+    const e=C.bogenKorrektor(n,s.id,'e'), z=b.zweit?C.bogenKorrektor(n,s.id,'z'):null, p=C.ergebnis(RN,s.id).punkte;
+    h+=`<tr><td class="name" data-bogen="${esc(s.id)}" style="cursor:pointer"><span class="muted klein">${i+1}</span>&nbsp; ${esc(s.nn)}, ${esc(s.vn)}</td>`;
+    e.aufg.forEach(x=>h+=`<td class="wert">${x.summe==null?'':fmt(x.summe,2)}</td>`);
+    h+=`<td class="calc">${e.gesamt==null?(e.irgend?'…':''):fmt(e.gesamt,2)}</td>${b.zweit?`<td class="calc">${z.gesamt==null?(z.irgend?'…':''):fmt(z.gesamt,2)}</td>`:''}<td class="calc note ${notenKlasse(p)}">${p==null?'':p}</td>
+      <td style="padding:0 6px"><button class="klein" data-bogen="${esc(s.id)}">Bogen</button></td></tr>`;
+  });
+  if(!sch.length) h+=`<tr><td class="name muted" colspan="99">Keine Schüler im Kurs.</td></tr>`;
+  h+=`</tbody></table></div><div id="nwSeite"></div></div>`;
+  return h;
+}
+
+/* ---- Fenster: Bewertungsbogen eines Schülers ---- */
+let bogenSid=null;
+function oeffneBogen(sid){
+  bogenSid=sid; zeigeBogen();
+  const d=$('dlgBogen'); if(!d.open) d.showModal();
+  const f=d.querySelector('input.bgIn'); if(f){ f.focus(); f.select(); }
+}
+function bogenAktuell(){ const k=kurs(), n=k&&k.nachweise.find(x=>x.id===A.nwId); return {k,n}; }
+function zeigeBogen(){
+  const {k,n}=bogenAktuell(); if(!n) return;
+  const b=n.bogen, sch=aktiveSchueler(k), idx=sch.findIndex(s=>s.id===bogenSid), s=sch[idx];
+  if(!s) return;
+  const bw=(n.bw[s.id])||{}, wer=b.zweit?['e','z']:['e'];
+  let h=`<div class="bogenKopf"><div><div class="muted klein">${esc(nwTitel(k,n))} · ${esc(k.klasse)} · ${esc(k.fach)}</div><h3 style="margin:2px 0 0">${esc(s.nn)}, ${esc(s.vn)}</h3></div>
+    <div class="zeile"><button class="klein" data-bgnav="-1" ${idx<=0?'disabled':''}>◀ Vorheriger</button><span class="muted klein">${idx+1} / ${sch.length}</span><button class="klein" data-bgnav="1" ${idx>=sch.length-1?'disabled':''}>Nächster ▶</button></div></div>
+    <div class="bogenGrid" style="--n:${b.anz}">`;
+  for(let a=0;a<b.anz;a++){
+    h+=`<div class="bogenAufg"><h4>Teilaufgabe ${a+1} <span class="muted">· ${fmt(b.gew[a])} %</span></h4>
+      <table class="bogenTab"><thead><tr><th>Kriterium</th><th class="r">%</th><th class="ek">${b.zweit?'1. Korr.':'Punkte'}</th>${b.zweit?'<th class="zk">2. Korr.</th>':''}</tr></thead><tbody>`;
+    BOGEN_KRIT.forEach((kr,c)=>{
+      h+=`<tr><td>${esc(kr.name)}</td><td class="r muted">${kr.gew}</td>${wer.map(w=>{ const v=((bw[w]||[])[a]||[])[c]; return `<td><input class="bgIn ${w}" data-w="${w}" data-a="${a}" data-c="${c}" data-ord="${(w==='e'?0:100)+a*3+c}" inputmode="numeric" value="${v==null?'':v}"></td>`; }).join('')}</tr>`;
+    });
+    h+=`<tr class="su"><td>Summe</td><td></td>${wer.map(w=>`<td id="bgSu_${w}_${a}"></td>`).join('')}</tr>
+        <tr class="su"><td>Teilaufgabe (× ${fmt(b.gew[a])} %)</td><td></td>${wer.map(w=>`<td id="bgTe_${w}_${a}"></td>`).join('')}</tr></tbody></table>
+      <div class="gutachten" id="bgGut_${a}"></div></div>`;
+  }
+  h+=`</div><div class="bogenFuss" id="bgFuss"></div>`;
+  $('dlgBogenInhalt').innerHTML=h;
+  bogenAktualisieren();
+}
+function gutachtenTexte(n, sid, a, w){
+  const v=(((n.bw[sid]||{})[w]||[])[a])||[];
+  return BOGEN_KRIT.map((kr,c)=>formulierung(kr.key, v[c])).filter(Boolean);
+}
+function bogenAktualisieren(){
+  const {k,n}=bogenAktuell(); if(!n || !bogenSid) return;
+  const b=n.bogen, wer=b.zweit?['e','z']:['e'];
+  const erg={}; wer.forEach(w=>erg[w]=C.bogenKorrektor(n,bogenSid,w));
+  for(let a=0;a<b.anz;a++){
+    wer.forEach(w=>{ const x=erg[w].aufg[a]; $(`bgSu_${w}_${a}`).textContent=x.summe==null?'':fmt(x.summe,2); $(`bgTe_${w}_${a}`).textContent=x.teil==null?'':fmt(x.teil,2); });
+    const t=wer.map(w=>gutachtenTexte(n,bogenSid,a,w).map(x=>`<p class="${w}">${esc(x)}</p>`).join('')).join('');
+    $(`bgGut_${a}`).innerHTML = `<div class="klein muted" style="font-weight:600;margin-bottom:4px">Wortgutachten Teilaufgabe ${a+1}</div>` + (t || '<p class="muted klein">Erscheint, sobald Punkte eingetragen sind.</p>');
+  }
+  const p=C.ergebnis(rechenNw(n), bogenSid).punkte;
+  $('bgFuss').innerHTML=`<div class="bogenErg"><div>Punkte Erstkorrektor<b>${erg.e.gesamt==null?'–':fmt(erg.e.gesamt,2)}</b></div>${b.zweit?`<div>Punkte Zweitkorrektor<b>${erg.z.gesamt==null?'–':fmt(erg.z.gesamt,2)}</b></div>`:''}<div class="np ${notenKlasse(p)}">Notenpunkte<b>${p==null?'–':p}</b></div></div>
+    ${bogenGewSumme(n)!==100?`<p class="klein" style="color:var(--err)">Achtung: Die Gewichtung der Teilaufgaben ergibt ${fmt(bogenGewSumme(n))} % statt 100 %.</p>`:''}
+    <div class="gutachten gesamt"><div class="klein muted" style="font-weight:600;margin-bottom:4px">Gesamtwürdigung</div>${p==null?'<p class="muted klein">Erscheint, sobald alle Kriterien des Erstkorrektors bewertet sind.</p>':`<p>${esc(formulierung('gesamt',p))}</p>`}</div>`;
+}
+$('dlgBogen').addEventListener('input', e=>{
+  const el=e.target; if(!el.classList.contains('bgIn')) return;
+  const {n}=bogenAktuell(); if(!n) return;
+  const t=el.value.trim(), v=zahl(t);
+  const ok = t==='' || (v!=null && Number.isInteger(v) && v>=0 && v<=15);
+  el.classList.toggle('falsch', !ok);
+  if(!ok) return;
+  const w=el.dataset.w, a=+el.dataset.a, c=+el.dataset.c;
+  const s=n.bw[bogenSid]=n.bw[bogenSid]||{}; const arr=s[w]=s[w]||[]; const ta=arr[a]=arr[a]||[];
+  ta[c]= t===''?null:v;
+  geaendert(); bogenAktualisieren();
+});
+$('dlgBogen').addEventListener('keydown', e=>{
+  const el=e.target; if(!el.classList.contains('bgIn') || e.key!=='Enter') return;
+  e.preventDefault();
+  const alle=[...$('dlgBogen').querySelectorAll('input.bgIn')].sort((x,y)=>x.dataset.ord-y.dataset.ord);
+  const nxt=alle[alle.indexOf(el)+(e.shiftKey?-1:1)];
+  if(nxt){ nxt.focus(); nxt.select(); }
+  else if(!e.shiftKey){ const b=$('dlgBogen').querySelector('[data-bgnav="1"]'); if(b && !b.disabled) b.click(); }
+});
+$('dlgBogen').addEventListener('click', e=>{
+  const nav=e.target.closest('[data-bgnav]');
+  if(nav){ const {k}=bogenAktuell(), sch=aktiveSchueler(k), i=sch.findIndex(s=>s.id===bogenSid)+Number(nav.dataset.bgnav); if(sch[i]) oeffneBogen(sch[i].id); return; }
+  if(e.target.closest('[data-bgaktion="schliessen"]')) bogenSchliessen();
+  if(e.target.closest('[data-bgaktion="drucken"]')){ const {k,n}=bogenAktuell(); drucken(bogenDruckHTML(k,n,bogenSid)); }
+});
+$('dlgBogen').addEventListener('cancel', e=>{ e.preventDefault(); bogenSchliessen(); });
+function bogenSchliessen(){ $('dlgBogen').close(); bogenSid=null; neuMitFokus(zeigeNwEditor); }
+$('nwEditor').addEventListener('click', e=>{ const b=e.target.closest('[data-bogen]'); if(b) oeffneBogen(b.dataset.bogen); });
+
+/* ---- Druck (A4 quer, wie die Excel-Vorlage) ---- */
+function bogenDruckHTML(k,n,sid){
+  const s=k.schueler.find(x=>x.id===sid); if(!s) return '';
+  const b=n.bogen, wer=b.zweit?['e','z']:['e'], bw=n.bw[sid]||{};
+  const erg={}; wer.forEach(w=>erg[w]=C.bogenKorrektor(n,sid,w));
+  const p=C.ergebnis(rechenNw(n), sid).punkte;
+  const L='text-align:left;', TH='background:#e3efef;';
+  const sp=b.zweit?2:1;
+  let t=`<table style="font-size:9pt"><tr><th style="${L}${TH}">Aufgabe</th><th style="${TH}">%</th>${Array.from({length:b.anz},(_,a)=>`<th colspan="${sp}" style="${TH}">${a+1}</th>`).join('')}</tr>
+    <tr><td style="${L}">Gewichtung [%]</td><td></td>${Array.from({length:b.anz},(_,a)=>`<td colspan="${sp}">${fmt(b.gew[a])}</td>`).join('')}</tr>`;
+  if(b.zweit) t+=`<tr><td style="${L}">Korrektor</td><td></td>${Array.from({length:b.anz},()=>'<td>1</td><td>2</td>').join('')}</tr>`;
+  BOGEN_KRIT.forEach((kr,c)=>{ t+=`<tr><td style="${L}">${esc(kr.name)}</td><td>${kr.gew}</td>${Array.from({length:b.anz},(_,a)=>wer.map(w=>{ const v=(((bw[w]||[])[a])||[])[c]; return `<td>${v==null?'':v}</td>`; }).join('')).join('')}</tr>`; });
+  t+=`<tr><td style="${L}"><b>Summe</b></td><td></td>${Array.from({length:b.anz},(_,a)=>wer.map(w=>{ const x=erg[w].aufg[a]; return `<td>${x.summe==null?'':fmt(x.summe,2)}</td>`; }).join('')).join('')}</tr>
+    <tr><td style="${L}"><b>Teilaufgabe</b></td><td></td>${Array.from({length:b.anz},(_,a)=>wer.map(w=>{ const x=erg[w].aufg[a]; return `<td>${x.teil==null?'':fmt(x.teil,2)}</td>`; }).join('')).join('')}</tr></table>
+    <table style="font-size:10pt;margin-top:8pt;width:auto;min-width:70%"><tr><td style="${L}">Punkte Erstkorrektor:</td><td><b>${erg.e.gesamt==null?'':fmt(erg.e.gesamt,2)}</b></td></tr>
+    ${b.zweit?`<tr><td style="${L}">Punkte Zweitkorrektor:</td><td><b>${erg.z.gesamt==null?'':fmt(erg.z.gesamt,2)}</b></td></tr>`:''}
+    <tr><td style="${L}background:#fff2cc"><b>Punkte:</b></td><td style="background:#fff2cc;font-size:13pt"><b>${p==null?'':p}</b></td></tr></table>
+    <div style="margin-top:22pt;font-size:9.5pt">1. Korrektor: ______________________________</div>
+    ${b.zweit?'<div style="margin-top:16pt;font-size:9.5pt">2. Korrektor: ______________________________</div>':''}`;
+  const gut=a=>wer.map(w=>gutachtenTexte(n,sid,a,w).map(x=>`<p style="margin:0 0 4pt;color:${w==='e'?'#c00000':'#006600'}">${esc(x)}</p>`).join('')).join('');
+  const g=`<table style="font-size:8pt;table-layout:fixed;width:100%"><tr>${Array.from({length:b.anz},(_,a)=>`<th style="${L}${TH}">Wortgutachten Teilaufgabe ${a+1}</th>`).join('')}</tr>
+    <tr style="vertical-align:top">${Array.from({length:b.anz},(_,a)=>`<td style="${L}height:250pt">${gut(a)}</td>`).join('')}</tr>
+    <tr><th style="${L}${TH}" colspan="${b.anz}">Gesamtwürdigung</th></tr><tr><td colspan="${b.anz}" style="${L}font-size:9pt;height:36pt;vertical-align:top">${p==null?'':esc(formulierung('gesamt',p))}</td></tr></table>`;
+  return `<div style="font-size:10pt"><div style="text-align:center;font-weight:700;font-size:12pt">${esc(SCHULE)}</div>
+    <div style="text-align:center;font-weight:700;font-size:16pt;letter-spacing:1pt;margin:4pt 0 8pt">BEWERTUNGSBOGEN</div>
+    <table style="width:auto;min-width:60%;margin-bottom:8pt"><tr><td style="${L}border:none;padding-right:8pt">Schüler/in:</td><td style="${L}border:none"><b>${esc(s.vn)} ${esc(s.nn)}</b></td><td style="${L}border:none;padding:0 8pt 0 24pt">Klasse:</td><td style="${L}border:none"><b>${esc(k.klasse)}</b></td><td style="${L}border:none;padding:0 8pt 0 24pt">${esc(nwTitel(k,n))}</td><td style="${L}border:none">${n.geschrieben?datumText(n.geschrieben):''}</td></tr></table>
+    <table style="border:none;width:99%;table-layout:fixed"><colgroup><col style="width:40%"><col></colgroup><tr style="vertical-align:top"><td style="border:none;padding:0 10pt 0 0">${t}</td><td style="border:none;padding:0">${g}</td></tr></table></div>`;
+}
+function bogenAlleDrucken(){
+  const k=kurs(), n=k.nachweise.find(x=>x.id===A.nwId); if(!n) return;
+  const sch=aktiveSchueler(k).filter(s=>C.bogenKorrektor(n,s.id,'e').irgend);
+  if(!sch.length){ toast('Noch keine Bögen ausgefüllt.'); return; }
+  drucken(sch.map((s,i)=>`<div style="${i?'break-before:page;':''}">${bogenDruckHTML(k,n,s.id)}</div>`).join(''));
+}
+
+/* ---- Textbausteine bearbeiten ---- */
+async function formulierungenBearbeiten(kat){
+  const akt=(D.formulierungen&&D.formulierungen[kat]) || FORMULIERUNGEN_STANDARD[kat];
+  const html=`<div class="formular">${Array.from({length:16},(_,i)=>15-i).map(p=>`<label class="feld">${p} Punkte<textarea data-f="t${p}" rows="3" style="font-size:14px">${esc(akt[p])}</textarea></label>`).join('')}</div>`;
+  const f=await dialog(`Textbausteine: ${FORM_KAT[kat]}`, 'Diese Texte erscheinen im Wortgutachten, je nach vergebener Punktzahl.', [{t:'Standard wiederherstellen',w:'std'},{t:'Abbrechen',w:false},{t:'Speichern',w:true,p:true}], html);
+  if(!f) return;
+  D.formulierungen=D.formulierungen||{};
+  if(f._knopf==='std'){ delete D.formulierungen[kat]; toast('Standardtexte wiederhergestellt.'); }
+  else { D.formulierungen[kat]=Array.from({length:16},(_,p)=>String(f['t'+p]||'').trim()); toast('Textbausteine gespeichert.'); }
+  geaendert();
 }
 
 /* ================= Referate ================= */
@@ -1416,6 +1716,10 @@ function zeigeDaten(){
     ${(D.schluessel||[]).length?`<ul>${D.schluessel.map(s=>`<li>${esc(s.name)} <span class="muted klein">(${s.art==='be'?'feste BE-Grenzen':'Prozent'})</span> <button class="link klein" data-schl="${esc(s.id)}">bearbeiten</button></li>`).join('')}</ul>`:''}
     <div class="zeile"><button data-aktion="schluesselNeu">+ Eigener Notenschlüssel</button></div>
   </div>
+  <div class="karte"><h2>Textbausteine Bewertungsbogen</h2>
+    <p>Aus diesen Texten entsteht das Wortgutachten beim Bewertungsbogen (je Kriterium und Punktzahl) sowie die Gesamtwürdigung.</p>
+    <div class="zeile">${Object.entries(FORM_KAT).map(([kat,name])=>`<button class="klein" data-fkat="${kat}">${esc(name)}${D.formulierungen&&D.formulierungen[kat]?' ✎':''} …</button>`).join('')}</div>
+  </div>
   <div class="karte"><h2>Lehrkraft</h2><div class="zeile"><label class="feld" style="max-width:320px;flex:1">Name (für Ausdrucke)<input id="lehrkraftFeld" value="${esc(D.lehrkraft||'')}"></label></div></div>
   <div class="karte" id="verwaltung"><h2>Verwaltung: Schuljahrespaket erstellen</h2>
     <p>Für die Lehrkraft, die die Schülerlisten für die Schule vorbereitet. Importiere die Excel-Datei mit allen Klassen und erstelle daraus ein Schuljahrespaket für das Kollegium.</p>
@@ -1427,6 +1731,7 @@ function zeigeDaten(){
   $('daten').innerHTML=h;
   $('lehrkraftFeld').onchange=e=>{ D.lehrkraft=e.target.value.trim(); geaendert(); };
   $('daten').querySelectorAll('[data-schl]').forEach(b=>b.onclick=()=>schluesselBearbeiten(b.dataset.schl));
+  $('daten').querySelectorAll('[data-fkat]').forEach(b=>b.onclick=async()=>{ await formulierungenBearbeiten(b.dataset.fkat); zeigeDaten(); });
   if(verwaltungDaten) zeigeVerwaltungVorschau();
 }
 
@@ -1599,7 +1904,14 @@ function druckKlassenliste(){
 function druckNachweis(){
   const k=kurs(), n=k.nachweise.find(x=>x.id===A.nwId); if(!n) return;
   const RN=rechenNw(n), sch=aktiveSchueler(k), sp=C.notenspiegel(RN, sch.map(s=>s.id));
-  let h=druckKopf(nwTitel(k,n))+`<div class="sub">${n.geschrieben?'Geschrieben am '+datumText(n.geschrieben):''}${n.zurueck?' · zurückgegeben am '+datumText(n.zurueck):''} ${n.modus==='aufgaben'?` · Notenschlüssel ${esc(RN.schluessel.name)} · ${fmt(C.gesamtBE(RN))} BE`:' · Bewertung mit Wortgutachten'}</div>`;
+  let h=druckKopf(nwTitel(k,n))+`<div class="sub">${n.geschrieben?'Geschrieben am '+datumText(n.geschrieben):''}${n.zurueck?' · zurückgegeben am '+datumText(n.zurueck):''} ${n.modus==='aufgaben'?` · Notenschlüssel ${esc(RN.schluessel.name)} · ${fmt(C.gesamtBE(RN))} BE`:(n.modus==='bogen'?` · Bewertungsbogen, Gewichtung ${n.bogen.gew.slice(0,n.bogen.anz).map(fmt).join(' / ')} %`:' · Bewertung mit Wortgutachten')}</div>`;
+  if(n.modus==='bogen'){
+    h+=`<table><thead><tr><th>Nr.</th><th class="l">Name</th>${Array.from({length:n.bogen.anz},(_,a)=>`<th>A${a+1}</th>`).join('')}<th>Erstkorr.</th>${n.bogen.zweit?'<th>Zweitkorr.</th>':''}<th>Punkte</th></tr></thead><tbody>`;
+    sch.forEach((s,i)=>{ const e=C.bogenKorrektor(n,s.id,'e'), z=n.bogen.zweit?C.bogenKorrektor(n,s.id,'z'):null, p=C.ergebnis(RN,s.id).punkte;
+      h+=`<tr><td>${i+1}</td><td class="l">${esc(s.nn)}, ${esc(s.vn)}</td>${e.aufg.map(x=>`<td>${x.summe==null?'':fmt(x.summe,2)}</td>`).join('')}<td>${e.gesamt==null?'':fmt(e.gesamt,2)}</td>${z?`<td>${z.gesamt==null?'':fmt(z.gesamt,2)}</td>`:''}<td><b>${p==null?'':p}</b></td></tr>`; });
+    h+=`</tbody></table><p style="margin-top:8pt"><b>Notenspiegel</b> (∅ ${sp.schnitt==null?'–':fmt(sp.schnitt,2)}, ${sp.teilnehmer} Teilnehmer)</p><table><tr>${Array.from({length:16},(_,i)=>`<th>${15-i}</th>`).join('')}</tr><tr>${Array.from({length:16},(_,i)=>`<td>${sp.anzahl[15-i]||''}</td>`).join('')}</tr></table>`;
+    drucken(h); return;
+  }
   h+=`<table><thead><tr><th>Nr.</th><th class="l">Name</th>${n.modus==='aufgaben'?n.aufgaben.map((b,i)=>`<th>A${i+1}<br>(${fmt(b)})</th>`).join('')+'<th>Σ</th><th>%</th>':''}<th>Punkte</th></tr></thead><tbody>`;
   sch.forEach((s,i)=>{ const r=C.ergebnis(RN,s.id), w=(n.werte[s.id]||[]);
     h+=`<tr><td>${i+1}</td><td class="l">${esc(s.nn)}, ${esc(s.vn)}</td>${n.modus==='aufgaben'?n.aufgaben.map((b,x)=>`<td>${w[x]==null?'':fmt(w[x])}</td>`).join('')+`<td>${r.summe==null?'':fmt(r.summe)}</td><td>${r.anteil==null?'':fmt(r.anteil*100,1)}</td>`:''}<td><b>${r.punkte==null?'':r.punkte}</b></td></tr>`; });
@@ -1638,6 +1950,7 @@ const AKTIONEN = {
   druckUebersicht, druckKlassenliste, druckNachweis, nsKopieren, nsDrucken,
   refEintragen: ()=>refEintragenKlick(), refLoeschen, refDrucken: ()=>{ const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(r) drucken(refBogenHTML(k,r),{hoch:true}); },
   refLeerDrucken: ()=>drucken(refBogenHTML(kurs(),null),{hoch:true}),
+  bogenAlleDrucken,
 };
 $('btnHinweisSichern').onclick=e=>{ const w=e.target.dataset.was; if(w==='verbinden') dateiErneutVerbinden(); else if(w==='neu') dateiNeu(); else dateiSpeichernManuell(); };
 
