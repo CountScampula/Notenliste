@@ -126,6 +126,43 @@ th .unter{display:block;font-weight:400;color:var(--muted);font-size:11px}
 .aufgabenLeiste{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
 .leer{color:var(--muted);padding:30px;text-align:center}
 
+/* Referate */
+#refLayout{display:grid;grid-template-columns:270px 1fr;gap:16px;align-items:start}
+#refListe{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;position:sticky;top:70px}
+#refListe h4{margin:10px 6px 6px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;display:flex;justify-content:space-between}
+#refListe h4 span{text-transform:none;letter-spacing:0;font-weight:400}
+#refListe .nw{padding:8px 10px;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center}
+#refListe .nw:hover{background:#f3f1ec}
+#refListe .nw.aktiv{background:var(--accent-soft)}
+#refListe .nw .t{font-weight:600}
+#refListe .nw .s{font-size:12px;color:var(--muted)}
+#refListe .nw .np{font-weight:700;font-size:15px;min-width:24px;text-align:right}
+#refListe .neu{display:flex;flex-wrap:wrap;gap:6px;padding:4px 6px 8px}
+#refEditor .kopf{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+#refEditor .kopf .breit{grid-column:span 2}
+#refInhalt{display:grid;grid-template-columns:1fr 290px;gap:16px;align-items:start}
+#refSeite{position:sticky;top:70px}
+.krit{display:grid;grid-template-columns:minmax(170px,1.2fr) auto minmax(150px,1fr);gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line2)}
+.krit .t{font-weight:600;font-size:14.5px} .krit .d{font-size:12.5px;color:var(--muted);line-height:1.3}
+.kritKopf{display:grid;grid-template-columns:minmax(170px,1.2fr) auto minmax(150px,1fr);gap:12px;font-size:12px;color:var(--muted);font-weight:600;padding-bottom:4px}
+.kritKopf .sk{display:flex;gap:4px} .kritKopf .sk span{width:42px;text-align:center}
+.stufen{display:flex;gap:4px}
+.stufen button{width:42px;height:40px;padding:0;font-weight:650;font-size:15px}
+.stufen button.an{background:var(--accent);border-color:var(--accent);color:#fff}
+.krit textarea{min-height:40px;height:40px;resize:vertical;font-size:14px;padding:8px 9px;line-height:1.35}
+.refSumme{display:flex;justify-content:flex-end;gap:10px;font-weight:650;color:var(--accent);padding-top:10px;border-top:1px solid var(--line2)}
+.refAusw{width:100%;border-collapse:collapse;font-size:13.5px}
+.refAusw th{font-size:12px;color:var(--muted);font-weight:600;text-align:left;border-bottom:1px solid var(--line);padding:4px}
+.refAusw td{padding:5px 4px;border-bottom:1px solid var(--line2)} .refAusw td.r,.refAusw th.r{text-align:right}
+.refAusw tr.summe td{font-weight:700;border-bottom:none}
+.refNP{display:flex;align-items:baseline;justify-content:space-between;background:var(--accent-soft);border-radius:10px;padding:10px 14px;margin:12px 0}
+.refNP b{font-size:30px;color:var(--accent)} .refNP.p0 b,.refNP.p13 b{color:inherit}
+.refFeedback{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.refFeedback textarea{min-height:110px;resize:vertical}
+.refHinweis{font-size:13px;border-radius:8px;padding:8px 10px;margin-top:10px}
+.refHinweis.ok{background:var(--ok-soft);color:var(--ok)} .refHinweis.warn{background:var(--warn-soft);color:var(--warn)}
+table.raster input.zelle.ref{background:#efe9f7;color:#4e2f86;font-weight:650}
+
 /* Schüler */
 .schuelerListe{list-style:none;margin:0;padding:0;columns:2;column-gap:28px}
 .schuelerListe li{display:flex;justify-content:space-between;gap:10px;padding:6px 4px;border-bottom:1px solid var(--line2);break-inside:avoid}
@@ -158,12 +195,17 @@ body.druckmodus #druck td.l,body.druckmodus #druck th.l{text-align:left}
   #druck th,#druck td{border:1px solid #999;padding:2pt 4pt;text-align:center}
   #druck td.l,#druck th.l{text-align:left}
   #druck th{background:#eee}
+  #druck tr{break-inside:avoid}
   @page{size:A4 landscape;margin:12mm}
+}
+@media (max-width:640px){
+  .krit{grid-template-columns:1fr;gap:8px} .kritKopf{display:none}
 }
 @media (max-width:900px){
   header{gap:8px;padding:8px 12px} #status{display:none} #kursWahl{min-width:0;flex:1}
-  #nwLayout,#nwInhalt{grid-template-columns:1fr}
-  #nwListe{position:static}
+  #nwLayout,#nwInhalt,#refLayout,#refInhalt{grid-template-columns:1fr}
+  #nwListe,#refListe,#refSeite{position:static}
+  #refEditor .kopf .breit{grid-column:auto}
   .schuelerListe{columns:1}
   main{padding:12px}
 }
@@ -176,6 +218,7 @@ body.druckmodus #druck td.l,body.druckmodus #druck th.l{text-align:left}
   <nav id="tabs" hidden>
     <button data-seite="uebersicht" class="aktiv">Übersicht</button>
     <button data-seite="nachweise">Leistungsnachweise</button>
+    <button data-seite="referate">Referate</button>
     <button data-seite="schueler">Schüler</button>
     <button data-seite="schluesselrechner">Notenschlüssel</button>
     <button data-seite="daten">Daten &amp; Einstellungen</button>
@@ -229,6 +272,14 @@ body.druckmodus #druck td.l,body.druckmodus #druck th.l{text-align:left}
     <div id="nwLayout">
       <div id="nwListe"></div>
       <div id="nwEditor"></div>
+    </div>
+  </section>
+
+  <!-- Referate -->
+  <section id="referate" class="seite">
+    <div id="refLayout">
+      <div id="refListe"></div>
+      <div id="refEditor"></div>
     </div>
   </section>
 
@@ -419,7 +470,7 @@ const KLEIN_K = { KA:'KA', Ex:'Ex' };
 /* ================= Speicher ================= */
 const LEER = () => ({ version:1, lehrkraft:'', stamm:null, kurse:[], schluessel:[], letzteSicherung:null, aktKurs:null, geaendert:null, dateiStand:null });
 let D = LEER();
-let A = { seite:'start', nwId:null };
+let A = { seite:'start', nwId:null, refId:null };
 
 function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('notenliste',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
 async function kvSet(k,v){ const db=await idb(); await new Promise((res,rej)=>{ const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }
@@ -681,10 +732,11 @@ function zeigeSeite(id){
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('aktiv', b.dataset.seite===id));
   const hatKurs=!!kurs();
   $('tabs').hidden = false; $('kursWahl').hidden = !D.kurse.length;
-  ['uebersicht','nachweise','schueler'].forEach(t=>{ const b=document.querySelector(`#tabs button[data-seite="${t}"]`); if(b) b.hidden=!hatKurs; });
+  ['uebersicht','nachweise','referate','schueler'].forEach(t=>{ const b=document.querySelector(`#tabs button[data-seite="${t}"]`); if(b) b.hidden=!hatKurs; });
   if(id==='schluesselrechner') zeigeSchluesselrechner();
   if(id==='uebersicht') zeigeUebersicht();
   if(id==='nachweise') zeigeNachweise();
+  if(id==='referate') zeigeReferate();
   if(id==='schueler') zeigeSchueler();
   if(id==='daten') zeigeDaten();
   if(id==='start') zeigeStart();
@@ -698,7 +750,7 @@ function fuelleKursWahl(){
 }
 $('kursWahl').onchange=async e=>{
   if(e.target.value==='__neu'){ e.target.value=D.aktKurs||''; await kursNeu(); return; }
-  D.aktKurs=e.target.value; A.nwId=null; geaendert(); zeigeSeite(A.seite==='start'||A.seite==='daten'?'uebersicht':A.seite);
+  D.aktKurs=e.target.value; A.nwId=null; A.refId=null; geaendert(); zeigeSeite(A.seite==='start'||A.seite==='daten'?'uebersicht':A.seite);
 };
 $('tabs').onclick=e=>{ const b=e.target.closest('button'); if(b) zeigeSeite(b.dataset.seite); };
 document.addEventListener('click', e=>{
@@ -731,7 +783,7 @@ async function kursNeu(){
   const schueler = (D.stamm && D.stamm.klassen[kl] ? D.stamm.klassen[kl] : []).map(s=>({id:s.id, nn:s.nn, vn:s.vn}));
   const k = { id:uid(), klasse:kl, fach:f.fach.trim(), lehrkraft:f.lehrkraft.trim(), schuljahr:f.schuljahr.trim(), anzMdl:3,
     hj:{1:{klein:f.k1, gewKlein:f.k1==='Ex'?1:2, gewEP:1}, 2:{klein:f.k2, gewKlein:f.k2==='Ex'?1:2, gewEP:1}},
-    schueler, nachweise:[], mdl:{} };
+    schueler, nachweise:[], mdl:{}, referate:[] };
   if(f.lehrkraft.trim()) D.lehrkraft=f.lehrkraft.trim();
   D.kurse.push(k); D.aktKurs=k.id; geaendert(); persistieren(); fuelleKursWahl();
   zeigeSeite('uebersicht');
@@ -757,9 +809,11 @@ function zeigeUebersicht(){
   const breite=S=>S.sa.length+S.kln.length+anzM+S.ep.length+3;
   const kopfNw=(n)=>`<th class="klickbar ${n.typ==='KLN'?(k.hj[n.hj].klein==='KA'?'ka':'ex'):''}" data-nw="${n.id}" title="${esc(nwTitel(k,n))}">${esc(nwKurz(k,n))}<span class="unter">${esc(datumText(n.geschrieben)||'')}</span></th>`;
   const kopfHJ=(S,h)=> S.sa.map(kopfNw).join('') + S.kln.map(kopfNw).join('') + Array.from({length:anzM},(_,i)=>`<th>mdl ${i+1}</th>`).join('') + S.ep.map(kopfNw).join('') + `<th title="Schnitt kleine Leistungsnachweise">∅ kl.</th><th title="Halbjahresschnitt">∅</th><th title="Halbjahresnote">NP</th>`;
+  // Mündliche Noten aus Referaten (zählen nicht als „bei allen erwartet“)
+  const refSlot=refSlots(k);
   // Farbmarkierung: welche Noten werden erwartet?
   const erwartetMdl={1:0,2:0};
-  [1,2].forEach(hNr=>sch.forEach(s=>{ const m=(k.mdl[s.id]&&k.mdl[s.id][hNr])||[]; for(let x=0;x<anzM;x++) if(m[x]!=null) erwartetMdl[hNr]=Math.max(erwartetMdl[hNr],x+1); }));
+  [1,2].forEach(hNr=>sch.forEach(s=>{ const m=(k.mdl[s.id]&&k.mdl[s.id][hNr])||[]; for(let x=0;x<anzM;x++) if(m[x]!=null && !refSlot.has(`${s.id}|${hNr}|${x}`)) erwartetMdl[hNr]=Math.max(erwartetMdl[hNr],x+1); }));
   const aktiv={1:false,2:false};
   [1,2].forEach(hNr=>{ const S=hNr===1?S1:S2; aktiv[hNr]= S.sa.length+S.kln.length>0 || erwartetMdl[hNr]>0; });
   const status=(s,j)=>{
@@ -778,7 +832,7 @@ function zeigeUebersicht(){
     if(j.note==null) return {cls:'', txt:''};
     return j.note<4 ? {cls:'st-orange', txt:`Alle Noten vorhanden, Note ${j.note} Punkte (unter 4)`} : {cls:'st-gruen', txt:`Alle Noten vorhanden, Note ${j.note} Punkte`};
   };
-  $('legende').innerHTML = (aktiv[1]||aktiv[2]) ? `<span><i style="background:#c62828"></i>Note fehlt</span><span><i style="background:#e08a00"></i>vollständig, unter 4 Punkte</span><span><i style="background:#2e7d32"></i>vollständig, ab 4 Punkte</span><span>· Maßgeblich ist die Jahresnote. Mündliche Noten gelten als fehlend, wenn Mitschüler schon mehr haben. Name antippen zeigt, was fehlt.</span>` : '';
+  $('legende').innerHTML = (aktiv[1]||aktiv[2]) ? `<span><i style="background:#c62828"></i>Note fehlt</span><span><i style="background:#e08a00"></i>vollständig, unter 4 Punkte</span><span><i style="background:#2e7d32"></i>vollständig, ab 4 Punkte</span>${refSlot.size?'<span><i style="background:#efe9f7;border:1px solid #c9b8e6"></i>mündliche Note aus Referat</span>':''}<span>· Maßgeblich ist die Jahresnote. Mündliche Noten gelten als fehlend, wenn Mitschüler schon mehr haben (Referate ausgenommen). Name antippen zeigt, was fehlt.</span>` : '';
   let h=`<thead><tr><th class="name" rowspan="2" style="vertical-align:bottom">Name</th><th class="gruppe" colspan="${breite(S1)}">1. Halbjahr</th><th class="gruppe" colspan="${breite(S2)}">2. Halbjahr</th><th class="gruppe" rowspan="2" title="Jahresnote">JN</th></tr>
     <tr>${kopfHJ(S1,1)}${kopfHJ(S2,2)}</tr></thead><tbody>`;
   const sammeln={}; const add=(key,v)=>{ (sammeln[key]=sammeln[key]||[]).push(v); };
@@ -789,7 +843,7 @@ function zeigeUebersicht(){
       const nwZelle=(n)=>{ const p=C.ergebnis(rechenNw(n), s.id).punkte; add(n.id,p); return `<td class="wert ${notenKlasse(p)}">${p==null?'':p}</td>`; };
       z+=S.sa.map(nwZelle).join('')+S.kln.map(nwZelle).join('');
       const m=(k.mdl[s.id]&&k.mdl[s.id][hNr])||[];
-      for(let x=0;x<anzM;x++){ const v=m[x]; add(`m${hNr}_${x}`, v); z+=`<td><input class="zelle" data-mdl="${s.id}" data-h="${hNr}" data-i="${x}" inputmode="numeric" value="${v==null?'':v}"></td>`; }
+      for(let x=0;x<anzM;x++){ const v=m[x]; add(`m${hNr}_${x}`, v); const rf=refSlot.get(`${s.id}|${hNr}|${x}`); z+=`<td><input class="zelle${rf?' ref':''}" data-mdl="${s.id}" data-h="${hNr}" data-i="${x}" inputmode="numeric" value="${v==null?'':v}"${rf?` title="${esc('Referat: '+(rf.thema||'ohne Thema')+(rf.datum?' ('+datumText(rf.datum)+')':''))}"`:''}></td>`; }
       z+=S.ep.map(nwZelle).join('');
       add(`kl${hNr}`, r.schnittKlein); add(`s${hNr}`, r.schnitt); add(`n${hNr}`, r.note);
       z+=`<td class="calc">${fmt(r.schnittKlein,2)}</td><td class="calc">${fmt(r.schnitt,2)}</td><td class="calc note ${notenKlasse(r.note)}">${r.note==null?'':r.note}</td>`;
@@ -822,6 +876,8 @@ $('tabUebersicht').addEventListener('change', e=>{
   const sid=el.dataset.mdl, h=el.dataset.h, i=+el.dataset.i;
   k.mdl[sid]=k.mdl[sid]||{1:[],2:[]}; k.mdl[sid][h]=k.mdl[sid][h]||[];
   k.mdl[sid][h][i]= v==null?null:v;
+  const rf=refSlots(k).get(`${sid}|${h}|${i}`);
+  if(rf && rf.mdl.wert!==(v==null?null:v)){ rf.mdl=null; toast('Diese Note stammte aus einem Referat. Die Verknüpfung mit dem Bewertungsbogen ist jetzt gelöst.'); }
   geaendert();
   setTimeout(()=>neuMitFokus(zeigeUebersicht),0);
 });
@@ -1032,6 +1088,253 @@ async function schuelerNeu(){
   if(!s){ toast('Nichts ausgewählt.'); return; }
   const da=k.schueler.find(x=>x.id===s.id); if(da){ da.entfernt=false; } else k.schueler.push({id:s.id, nn:s.nn, vn:s.vn, manuell:s.manuell||undefined});
   geaendert(); zeigeSchueler(); toast(`${s.nn}, ${s.vn} hinzugefügt.`);
+}
+
+/* ================= Referate ================= */
+// Bewertungsbogen: 15 Kriterien à 0–4 Punkte; Inhalt ×1, Darstellung ×1, Vortrag ×2 = max. 80 Punkte.
+// Ergebnis (Notenpunkte) wird als mündliche Note im gewählten Halbjahr eingetragen.
+const REF_BEREICHE = [
+  { id:'a', name:'Inhalt', faktor:1, k:[
+    ['Thema erfasst','Fragestellung klar benannt und sinnvoll eingegrenzt'],
+    ['Fachliche Richtigkeit','Aussagen korrekt, keine sachlichen Fehler'],
+    ['Gliederung','Einleitung, Hauptteil, Schluss; roter Faden erkennbar'],
+    ['Fachsprache','Fachbegriffe korrekt verwendet und erklärt'],
+    ['Praxisbezug und Quellen','Beispiele aus Klinik, Pflegeheim oder Praxis; Quellen angegeben'] ]},
+  { id:'b', name:'Darstellung', faktor:1, k:[
+    ['Medienwahl','Passende Medien (Folien, Plakat, Tafel, Modell) sinnvoll eingesetzt'],
+    ['Übersichtlichkeit','Gut lesbar, angemessene Textmenge und Schriftgröße'],
+    ['Visualisierung','Bilder, Grafiken oder Schaubilder unterstützen den Inhalt'],
+    ['Sprachliche Richtigkeit','Rechtschreibung und Grammatik in den Materialien'],
+    ['Ergebnissicherung','Handout oder Zusammenfassung für die Zuhörenden'] ]},
+  { id:'c', name:'Vortrag', faktor:2, k:[
+    ['Freies Sprechen','Mit Stichwortkarten statt Ablesen'],
+    ['Sprechweise','Lautstärke, Tempo, Deutlichkeit, Pausen'],
+    ['Körpersprache','Blickkontakt, Haltung, Gestik'],
+    ['Adressatenbezug','Verständlich erklärt, Zuhörende einbezogen'],
+    ['Zeit und Rückfragen','Zeitrahmen eingehalten, sicher auf Fragen reagiert'] ]},
+];
+const REF_STUFEN = ['nicht erfüllt','ansatzweise erfüllt','teilweise erfüllt','überwiegend erfüllt','voll erfüllt'];
+const REF_MAX = REF_BEREICHE.reduce((a,b)=>a+b.k.length*4*b.faktor, 0);   // 80
+const REF_SCHLUESSEL = C.SCHLUESSEL.mathe;   // 15 P. ab 95 %, … 1 P. ab 20 %
+const BUCHST = {a:'A', b:'B', c:'C'};
+
+function refs(k){ return (k.referate = k.referate || []); }
+function refErgebnis(r){
+  let gesamt=0, offen=0; const ber={};
+  REF_BEREICHE.forEach(b=>{
+    let roh=0;
+    b.k.forEach((_,i)=>{ const v=r.w[b.id+i]; if(C.istZahl(v)) roh+=v; else offen++; });
+    ber[b.id]={ roh, max:b.k.length*4, gew:roh*b.faktor, gmax:b.k.length*4*b.faktor };
+    gesamt+=roh*b.faktor;
+  });
+  return { ber, gesamt, offen, np: offen===0 ? C.punkte(gesamt, REF_MAX, REF_SCHLUESSEL) : null };
+}
+// Map "sid|hj|index" → Referat, dessen Note dort als mündliche Note steht
+function refSlots(k){
+  const m=new Map();
+  refs(k).forEach(r=>{ if(r.mdl) m.set(`${r.mdl.sid}|${r.mdl.h}|${r.mdl.i}`, r); });
+  return m;
+}
+function mdlWert(k,sid,h,i){ return k.mdl[sid] && k.mdl[sid][h] ? k.mdl[sid][h][i] : undefined; }
+function mdlSetzen(k,sid,h,i,v){
+  k.mdl[sid]=k.mdl[sid]||{1:[],2:[]}; k.mdl[sid][h]=k.mdl[sid][h]||[];
+  k.mdl[sid][h][i]=v;
+  if(v!=null && i+1>(k.anzMdl||3)) k.anzMdl=i+1;   // weitere Spalte für mündliche Noten
+}
+function refEintragen(k,r){
+  const e=refErgebnis(r); if(e.np==null || !r.sid) return false;
+  const m=(k.mdl[r.sid] && k.mdl[r.sid][r.hj]) || [];
+  let i=0; while(m[i]!=null) i++;
+  mdlSetzen(k, r.sid, r.hj, i, e.np);
+  r.mdl={ sid:r.sid, h:r.hj, i, wert:e.np };
+  return true;
+}
+// nach jeder Änderung: eingetragene Note aktuell halten
+function refAbgleich(k,r){
+  if(!r.mdl) return;
+  const m=r.mdl, ist=mdlWert(k,m.sid,m.h,m.i);
+  if(ist!=null && ist!==m.wert){ r.mdl=null; toast('Die Note wurde in der Übersicht von Hand geändert – die Verknüpfung ist gelöst.'); return; }
+  if(m.sid!==r.sid || m.h!==r.hj){
+    mdlSetzen(k,m.sid,m.h,m.i,null); r.mdl=null;
+    if(refEintragen(k,r)) toast(`Mündliche Note verschoben: ${r.hj}. Halbjahr, mdl ${r.mdl.i+1}.`);
+    return;
+  }
+  const e=refErgebnis(r);
+  if(e.np==null) return;
+  mdlSetzen(k,m.sid,m.h,m.i,e.np); m.wert=e.np;
+}
+function refSchueler(k,sid){ return k.schueler.find(s=>s.id===sid) || null; }
+function refName(k,r){ const s=refSchueler(k,r.sid); return s ? `${s.nn}, ${s.vn}` : 'Schüler wählen …'; }
+
+function zeigeReferate(){
+  const k=kurs(); if(!k){ zeigeSeite('start'); return; }
+  if(A.refId && !refs(k).some(r=>r.id===A.refId)) A.refId=null;
+  if(!A.refId && refs(k).length) A.refId=refSortiert(k)[0].id;
+  zeigeRefListe(); zeigeRefEditor();
+}
+function refSortiert(k,h){
+  return refs(k).filter(r=>h==null||r.hj===h).sort((a,b)=> a.hj-b.hj || (a.datum||'').localeCompare(b.datum||'') || (a.erstellt||0)-(b.erstellt||0));
+}
+function zeigeRefListe(){
+  const k=kurs(), anz=aktiveSchueler(k).length;
+  let h='';
+  [1,2].forEach(hj=>{
+    const l=refSortiert(k,hj), mit=new Set(l.filter(r=>r.sid).map(r=>r.sid)).size;
+    h+=`<h4>${hj}. Halbjahr <span>${mit} von ${anz}</span></h4>`;
+    l.forEach(r=>{
+      const e=refErgebnis(r);
+      h+=`<div class="nw${r.id===A.refId?' aktiv':''}" data-ref="${r.id}"><span><span class="t">${esc(refName(k,r))}</span><br><span class="s">${esc(r.thema||'ohne Thema')}${r.datum?' · '+datumText(r.datum):''}</span></span><span class="np ${notenKlasse(e.np)}" title="${e.np==null?e.offen+' Kriterien offen':'Notenpunkte'}">${e.np==null?'<span class="s">offen</span>':e.np}</span></div>`;
+    });
+    h+=`<div class="neu"><button class="klein" data-refneu="${hj}">+ Referat</button></div>`;
+  });
+  h+=`<div class="neu" style="border-top:1px solid var(--line2);padding-top:10px;margin-top:4px"><button class="klein" data-aktion="refLeerDrucken">Leeren Bogen drucken</button></div>`;
+  $('refListe').innerHTML=h;
+}
+$('refListe').addEventListener('click', e=>{
+  const n=e.target.closest('.nw'); if(n){ A.refId=n.dataset.ref; zeigeReferate(); return; }
+  const b=e.target.closest('button[data-refneu]'); if(b) refNeu(+b.dataset.refneu);
+});
+function refNeu(hj){
+  const k=kurs();
+  const r={ id:uid(), erstellt:Date.now(), hj, sid:'', datum:heuteISO(), thema:'', soll:'', ist:'', w:{}, n:{}, staerken:'', entwicklung:'', anmerkungen:'', mdl:null };
+  refs(k).push(r); A.refId=r.id; geaendert(); zeigeReferate();
+  const s=document.querySelector('#refEditor select[data-rf="sid"]'); if(s) s.focus();
+}
+function zeigeRefEditor(){
+  const k=kurs(), ed=$('refEditor'), r=refs(k).find(x=>x.id===A.refId);
+  if(!r){ ed.innerHTML=`<div class="karte leer">Noch keine Referate. Lege links eines an.</div>`; return; }
+  const andere=sid=>refs(k).filter(x=>x!==r && x.sid===sid);
+  const sch=aktiveSchueler(k).slice(); const akt=refSchueler(k,r.sid); if(akt && akt.entfernt) sch.unshift(akt);
+  const opt=`<option value="">– Schüler wählen –</option>`+sch.map(s=>{ const a=andere(s.id); return `<option value="${esc(s.id)}"${s.id===r.sid?' selected':''}>${esc(s.nn)}, ${esc(s.vn)}${a.length?'  ✓ Referat '+[...new Set(a.map(x=>x.hj+'. HJ'))].join(', '):''}</option>`; }).join('');
+  let h=`<div class="karte"><div class="zeile" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">Referat – <span id="refTitel">${esc(refName(k,r))}</span></h2>
+      <div class="zeile"><button class="klein" data-aktion="refDrucken">Bogen drucken</button><button class="klein danger" data-aktion="refLoeschen">Löschen</button></div></div>
+    <div class="kopf">
+      <label class="feld">Schüler<select data-rf="sid">${opt}</select></label>
+      <label class="feld">Halbjahr<select data-rf="hj"><option value="1"${r.hj===1?' selected':''}>1. Halbjahr</option><option value="2"${r.hj===2?' selected':''}>2. Halbjahr</option></select></label>
+      <label class="feld">Datum<input type="date" data-rf="datum" value="${esc(r.datum)}"></label>
+      <label class="feld breit">Thema<input data-rf="thema" value="${esc(r.thema)}" placeholder="z. B. Kommunikation im Pflegeteam"></label>
+      <label class="feld">Dauer Soll (Min.)<input data-rf="soll" inputmode="numeric" value="${esc(r.soll)}"></label>
+      <label class="feld">Dauer Ist (Min.)<input data-rf="ist" inputmode="numeric" value="${esc(r.ist)}"></label>
+    </div></div>
+  <div id="refInhalt"><div>`;
+  REF_BEREICHE.forEach(b=>{
+    h+=`<div class="karte"><h3>${BUCHST[b.id]} – ${b.name} <span class="muted" style="font-weight:400">(${b.faktor===2?'doppelt':'einfach'} gewichtet)</span></h3>
+      <div class="kritKopf"><span>Kriterium</span><span class="sk">${[4,3,2,1,0].map(p=>`<span title="${REF_STUFEN[p]}">${p}</span>`).join('')}</span><span>Notizen</span></div>`;
+    b.k.forEach(([t,d],i)=>{
+      const key=b.id+i, v=r.w[key];
+      h+=`<div class="krit"><div><div class="t">${esc(t)}</div><div class="d">${esc(d)}</div></div>
+        <div class="stufen" data-krit="${key}">${[4,3,2,1,0].map(p=>`<button type="button" data-stufe="${p}" class="${v===p?'an':''}" title="${p} – ${REF_STUFEN[p]}">${p}</button>`).join('')}</div>
+        <textarea data-rn="${key}" rows="1" placeholder="Notiz …">${esc(r.n[key]||'')}</textarea></div>`;
+    });
+    h+=`<div class="refSumme" data-rsum="${b.id}"></div></div>`;
+  });
+  h+=`<div class="karte"><h3>Rückmeldung</h3><div class="refFeedback">
+      <label class="feld">Stärken<textarea data-rf="staerken">${esc(r.staerken)}</textarea></label>
+      <label class="feld">Entwicklungsfelder / Tipps<textarea data-rf="entwicklung">${esc(r.entwicklung)}</textarea></label>
+      <label class="feld">Weitere Anmerkungen<textarea data-rf="anmerkungen">${esc(r.anmerkungen)}</textarea></label>
+    </div></div></div>
+    <div id="refSeite"></div></div>`;
+  ed.innerHTML=h;
+  zeigeRefSeite();
+}
+function zeigeRefSeite(){
+  const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
+  const e=refErgebnis(r);
+  REF_BEREICHE.forEach(b=>{ const el=document.querySelector(`#refEditor [data-rsum="${b.id}"]`); const x=e.ber[b.id];
+    if(el) el.textContent = b.faktor===1 ? `Summe: ${x.roh} / ${x.max} Punkte` : `Summe: ${x.roh} / ${x.max} × ${b.faktor} = ${x.gew} / ${x.gmax} Punkte`; });
+  let h=`<div class="karte" style="padding:14px 16px"><h3>Auswertung</h3><table class="refAusw"><thead><tr><th>Bereich</th><th class="r">Roh</th><th class="r">×</th><th class="r">Punkte</th></tr></thead><tbody>`;
+  REF_BEREICHE.forEach(b=>{ const x=e.ber[b.id]; h+=`<tr><td>${BUCHST[b.id]} – ${b.name}</td><td class="r">${x.roh}/${x.max}</td><td class="r">${b.faktor}</td><td class="r">${x.gew}/${x.gmax}</td></tr>`; });
+  h+=`<tr class="summe"><td>Gesamt</td><td></td><td></td><td class="r">${e.gesamt}/${REF_MAX}</td></tr></tbody></table>
+    <div class="refNP ${notenKlasse(e.np)}"><span>Notenpunkte</span><b>${e.np==null?'–':e.np}</b></div>`;
+  if(e.offen) h+=`<p class="klein" style="margin:0">Noch ${e.offen} ${e.offen===1?'Kriterium':'Kriterien'} ohne Bewertung.</p>`;
+  if(r.mdl){
+    const ist=mdlWert(k,r.mdl.sid,r.mdl.h,r.mdl.i);
+    h+=`<div class="refHinweis ok">✓ Als mündliche Note eingetragen: ${r.mdl.h}. Halbjahr, mdl ${r.mdl.i+1} (${ist==null?'–':ist} Punkte). Änderungen am Bogen werden automatisch übernommen.</div>`;
+  } else {
+    const bereit = e.np!=null && r.sid;
+    h+=`<button class="primary" data-aktion="refEintragen" style="width:100%;margin-top:10px" ${bereit?'':'disabled'}>Als mündliche Note eintragen</button>`;
+    if(!r.sid) h+=`<p class="klein" style="margin:6px 0 0">Zuerst oben den Schüler wählen.</p>`;
+  }
+  h+=`<details style="margin-top:12px"><summary class="klein muted" style="cursor:pointer">Umrechnungsschlüssel</summary><table class="schluesselTab" style="margin-top:6px">${(C.beTabelle(REF_MAX, REF_SCHLUESSEL, 1)||[]).map(z=>`<tr class="${notenKlasse(z.punkte)}"><td><b>${z.punkte}</b></td><td>${z.note}</td><td class="r">${z.bis==null||z.bis===z.ab?fmt(z.ab):fmt(z.ab)+'–'+fmt(z.bis)}</td></tr>`).join('')}</table></details></div>`;
+  $('refSeite').innerHTML=h;
+}
+function refAktualisiert(k,r){ refAbgleich(k,r); geaendert(); zeigeRefSeite(); zeigeRefListe(); }
+$('refEditor').addEventListener('click', e=>{
+  const b=e.target.closest('button[data-stufe]'); if(!b) return;
+  const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
+  const box=b.closest('[data-krit]'), key=box.dataset.krit, v=+b.dataset.stufe;
+  r.w[key]=v;
+  box.querySelectorAll('button').forEach(x=>x.classList.toggle('an', x===b));
+  refAktualisiert(k,r);
+});
+$('refEditor').addEventListener('input', e=>{
+  const el=e.target, k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
+  if(el.dataset.rn){ if(el.value) r.n[el.dataset.rn]=el.value; else delete r.n[el.dataset.rn]; geaendert(); return; }
+  const f=el.dataset.rf;
+  if(['thema','soll','ist','staerken','entwicklung','anmerkungen'].includes(f)){ r[f]=el.value; geaendert(); if(f==='thema') zeigeRefListe(); }
+});
+$('refEditor').addEventListener('change', async e=>{
+  const el=e.target, k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
+  const f=el.dataset.rf;
+  if(f==='datum'){ r.datum=el.value; geaendert(); zeigeRefListe(); return; }
+  if(f==='sid' || f==='hj'){
+    const neuSid = f==='sid' ? el.value : r.sid, neuHj = f==='hj' ? +el.value : r.hj;
+    const doppelt = neuSid && refs(k).find(x=>x!==r && x.sid===neuSid && x.hj===neuHj);
+    if(doppelt){
+      const s=refSchueler(k,neuSid);
+      const ok=await frage('Schon ein Referat in diesem Halbjahr', `${s.nn}, ${s.vn} hat im ${neuHj}. Halbjahr bereits ein Referat${doppelt.thema?` („${doppelt.thema}“`:' ('}${doppelt.datum?', '+datumText(doppelt.datum):''}).\n\nTrotzdem ein weiteres Referat bewerten?`, 'Ja, weiteres Referat', 'Abbrechen');
+      if(!ok){ el.value = f==='sid' ? r.sid : String(r.hj); return; }
+    }
+    r.sid=neuSid; r.hj=neuHj;
+    refAktualisiert(k,r);
+    $('refTitel').textContent=refName(k,r);
+  }
+});
+async function refEintragenKlick(){
+  const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r || r.mdl) return;
+  if(!refEintragen(k,r)) return;
+  geaendert(); zeigeRefSeite(); zeigeRefListe();
+  toast(`${refName(k,r)}: ${r.mdl.wert} Punkte als mündliche Note (${r.hj}. HJ, mdl ${r.mdl.i+1}) eingetragen.`);
+}
+async function refLoeschen(){
+  const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
+  const verkn = r.mdl && mdlWert(k,r.mdl.sid,r.mdl.h,r.mdl.i)===r.mdl.wert;
+  if(!(await frage('Referat löschen?', `Der Bewertungsbogen von ${refName(k,r)} wird mit allen Notizen gelöscht.${verkn?`\n\nDie mündliche Note (${r.mdl.wert} Punkte, ${r.mdl.h}. HJ, mdl ${r.mdl.i+1}) wird dabei auch aus der Übersicht entfernt.`:''}`, 'Löschen', 'Abbrechen', true))) return;
+  if(verkn) mdlSetzen(k,r.mdl.sid,r.mdl.h,r.mdl.i,null);
+  k.referate=refs(k).filter(x=>x!==r); A.refId=null; geaendert(); zeigeReferate();
+}
+// Ausgefüllter (oder leerer) Bewertungsbogen zum Drucken, A4 hoch
+function refBogenHTML(k, r){
+  const leer=!r; r = r || {w:{}, n:{}, hj:'', datum:'', thema:'', soll:'', ist:'', staerken:'', entwicklung:'', anmerkungen:''};
+  const e=refErgebnis(r), s=leer?null:refSchueler(k,r.sid);
+  const L='text-align:left;', TH='background:#e3efef;';
+  const nl=t=>esc(t||'').replace(/\n/g,'<br>');
+  let h=`<div style="font-size:9.5pt"><h1 style="color:#1d5c63;margin:0">Bewertungsbogen Referat</h1>
+    <div class="sub">${esc(k.fach)} · Klasse ${esc(k.klasse)}${k.schuljahr?' · Schuljahr '+esc(k.schuljahr):''}</div>
+    <table><tr><th style="${L}width:16%">Name</th><td style="${L}width:34%">${s?esc(s.nn+', '+s.vn):''}</td><th style="${L}width:16%">Datum</th><td style="${L}">${datumText(r.datum)}</td></tr>
+    <tr><th style="${L}">Thema</th><td style="${L}" colspan="3">${esc(r.thema)}</td></tr>
+    <tr><th style="${L}">Dauer</th><td style="${L}">Soll: ${esc(r.soll)||'____'} Min. &nbsp; Ist: ${esc(r.ist)||'____'} Min.</td><th style="${L}">Lehrkraft</th><td style="${L}">${esc(k.lehrkraft||D.lehrkraft||'')}</td></tr></table>
+    <p style="margin:5pt 0">Pro Kriterium 0–4 Punkte (4 voll erfüllt · 3 überwiegend · 2 teilweise · 1 ansatzweise · 0 nicht erfüllt). Inhalt ×1, Darstellung ×1, Vortrag ×2; max. ${REF_MAX} Punkte.</p>`;
+  REF_BEREICHE.forEach(b=>{
+    const x=e.ber[b.id];
+    h+=`<h3 style="color:#1d5c63;margin:9pt 0 3pt;font-size:11pt">${BUCHST[b.id]} – ${b.name} (${b.faktor===2?'doppelt':'einfach'} gewichtet)</h3>
+      <table><thead><tr><th style="${L}${TH}width:36%">Kriterium</th>${[4,3,2,1,0].map(p=>`<th style="${TH}width:4.5%">${p}</th>`).join('')}<th style="${L}${TH}">Notizen</th></tr></thead><tbody>`;
+    b.k.forEach(([t,d],i)=>{ const key=b.id+i, v=r.w[key];
+      h+=`<tr style="height:${leer?'26pt':'auto'}"><td style="${L}"><b>${esc(t)}</b><br><span style="font-size:8pt;color:#555">${esc(d)}</span></td>${[4,3,2,1,0].map(p=>`<td style="font-size:12pt">${v===p?'☒':'☐'}</td>`).join('')}<td style="${L}font-size:8.5pt">${nl(r.n[key])}</td></tr>`; });
+    h+=`<tr><td style="${L}"><b>Summe</b></td><td colspan="6" style="text-align:right"><b>${leer?'____':x.roh} / ${x.max}${b.faktor!==1?` × ${b.faktor} = ${leer?'____':x.gew} / ${x.gmax}`:''} Punkte</b></td></tr></tbody></table>`;
+  });
+  h+=`<h3 style="color:#1d5c63;margin:9pt 0 3pt;font-size:11pt">Auswertung</h3><table style="width:auto;min-width:60%"><tr><th style="${L}${TH}">Bereich</th><th style="${TH}">Rohpunkte</th><th style="${TH}">Faktor</th><th style="${TH}">Punkte</th></tr>
+    ${REF_BEREICHE.map(b=>{ const x=e.ber[b.id]; return `<tr><td style="${L}">${BUCHST[b.id]} – ${b.name}</td><td>${leer?'____':x.roh} / ${x.max}</td><td>× ${b.faktor}</td><td>${leer?'____':x.gew} / ${x.gmax}</td></tr>`; }).join('')}
+    <tr><td style="${L}"><b>Gesamt</b></td><td></td><td></td><td><b>${leer?'____':e.gesamt} / ${REF_MAX}</b></td></tr>
+    <tr><td style="${L}background:#fff2cc"><b>Notenpunkte</b></td><td style="background:#fff2cc"></td><td style="background:#fff2cc"></td><td style="background:#fff2cc;font-size:12pt"><b>${e.np==null?'____':e.np}</b></td></tr></table>`;
+  if(leer){
+    const z=C.beTabelle(REF_MAX, REF_SCHLUESSEL, 1)||[];
+    h+=`<h3 style="color:#1d5c63;margin:9pt 0 3pt;font-size:11pt">Umrechnungsschlüssel (${REF_MAX} Punkte → Notenpunkte)</h3><table><tr><th style="${TH}">NP</th>${z.map(x=>`<th style="${TH}">${x.punkte}</th>`).join('')}</tr><tr><th style="${TH}">Punkte</th>${z.map(x=>`<td style="font-size:8pt">${x.bis==null||x.bis===x.ab?fmt(x.ab):fmt(x.ab)+'–'+fmt(x.bis)}</td>`).join('')}</tr></table>`;
+  }
+  h+=`<h3 style="color:#1d5c63;margin:9pt 0 3pt;font-size:11pt">Rückmeldung</h3><table><tr><th style="${L}${TH}width:33%">Stärken</th><th style="${L}${TH}width:33%">Entwicklungsfelder / Tipps</th><th style="${L}${TH}">Weitere Anmerkungen</th></tr>
+    <tr style="height:70pt;vertical-align:top"><td style="${L}">${nl(r.staerken)}</td><td style="${L}">${nl(r.entwicklung)}</td><td style="${L}">${nl(r.anmerkungen)}</td></tr>
+    <tr><td colspan="3" style="${L}height:26pt;vertical-align:bottom"><b>Datum, Unterschrift Lehrkraft:</b></td></tr></table></div>`;
+  return h;
 }
 
 /* ================= Notenschlüssel-Rechner ================= */
@@ -1275,7 +1578,12 @@ async function paketErstellen(){
 }
 
 /* ================= Druck ================= */
-async function drucken(html){ $('druck').innerHTML=html; if(NATIV){ document.body.classList.add('druckmodus'); try{ await nativ('drucken'); }catch(e){} document.body.classList.remove('druckmodus'); return; } window.print(); }
+async function drucken(html, opt){
+  let st=null;
+  if(opt && opt.hoch){ st=document.createElement('style'); st.textContent='@media print{@page{size:A4 portrait;margin:12mm}}'; document.head.appendChild(st); window.addEventListener('afterprint', ()=>{ st.remove(); }, {once:true}); setTimeout(()=>{ if(st.isConnected) st.remove(); }, 60000); }
+  return druckenEigentlich(html, st);
+}
+async function druckenEigentlich(html, st){ $('druck').innerHTML=html; if(NATIV){ document.body.classList.add('druckmodus'); try{ await nativ('drucken'); }catch(e){} document.body.classList.remove('druckmodus'); if(st) st.remove(); return; } window.print(); }
 function druckKopf(titel){ const k=kurs(); return `<h1>${esc(titel)}</h1><div class="sub">Klasse ${esc(k.klasse)} · ${esc(k.fach)} · Schuljahr ${esc(k.schuljahr||'')} · Lehrkraft ${esc(k.lehrkraft||D.lehrkraft||'')} · Stand ${new Date().toLocaleDateString('de-DE')}</div>`; }
 function druckUebersicht(){
   const t=$('tabUebersicht').cloneNode(true);
@@ -1328,6 +1636,8 @@ const AKTIONEN = {
     if(!(await frage('Alle Daten löschen?','Alle Kurse, Noten und Schülerlisten werden von diesem Gerät gelöscht. Das lässt sich nicht rückgängig machen.','Alles löschen','Abbrechen',true))) return;
     D=LEER(); await kvSet('daten',D); fuelleKursWahl(); zeigeSeite('start'); pruefeHinweis(); },
   druckUebersicht, druckKlassenliste, druckNachweis, nsKopieren, nsDrucken,
+  refEintragen: ()=>refEintragenKlick(), refLoeschen, refDrucken: ()=>{ const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(r) drucken(refBogenHTML(k,r),{hoch:true}); },
+  refLeerDrucken: ()=>drucken(refBogenHTML(kurs(),null),{hoch:true}),
 };
 $('btnHinweisSichern').onclick=e=>{ const w=e.target.dataset.was; if(w==='verbinden') dateiErneutVerbinden(); else if(w==='neu') dateiNeu(); else dateiSpeichernManuell(); };
 
