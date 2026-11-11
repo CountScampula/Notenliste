@@ -817,8 +817,9 @@ function zeigeStart(){
 /* ================= Kurs anlegen / bearbeiten ================= */
 async function kursNeu(){
   const alle = alleKlassen(), klassen = Object.keys(alle);
-  const gruppe = (label, kl) => { const ks=Object.keys(kl).sort(sortKl); return ks.length ? `<optgroup label="${esc(label)}">${ks.map(k=>`<option value="${esc(k)}">${esc(k)} (${kl[k].length})</option>`).join('')}</optgroup>` : ''; };
-  const opt = (D.stamm ? gruppe('Klassen', D.stamm.klassen) : '') + (D.zusatz||[]).map(z=>gruppe(z.name, z.klassen)).join('');
+  const bezAlle = {}; (D.zusatz||[]).forEach(z=>Object.entries(z.bezeichnungen||{}).forEach(([g,b])=>{ if(!(D.stamm&&D.stamm.klassen[g]) && !bezAlle[g]) bezAlle[g]=b; }));
+  const gruppe = (label, kl, bz) => { const ks=Object.keys(kl).sort(sortKl); return ks.length ? `<optgroup label="${esc(label)}">${ks.map(k=>`<option value="${esc(k)}">${esc(k)}${bz&&bz[k]?' – '+esc(bz[k]):''} (${kl[k].length})</option>`).join('')}</optgroup>` : ''; };
+  const opt = (D.stamm ? gruppe('Klassen', D.stamm.klassen) : '') + (D.zusatz||[]).map(z=>gruppe(z.name, z.klassen, z.bezeichnungen)).join('');
   const html = `<div class="formular">
     ${klassen.length ? `<label class="feld">Klasse<select data-f="klasse">${opt}</select></label>` : `<p class="muted klein">Es ist noch kein Schuljahrespaket geladen. Du kannst trotzdem einen Kurs anlegen und die Schüler von Hand eintragen.</p><label class="feld">Klasse<input data-f="klasse" placeholder="z. B. 12S1"></label>`}
     <label class="feld">Fach<input data-f="fach" list="faecherListe" placeholder="z. B. Paed"><datalist id="faecherListe">${[...new Set(D.kurse.map(k=>k.fach))].map(f=>`<option value="${esc(f)}">`).join('')}</datalist></label>
@@ -828,7 +829,12 @@ async function kursNeu(){
       <label class="feld" style="flex:1">Kleine Leistungsnachweise 1. Halbjahr<select data-f="k1"><option value="KA">Kurzarbeiten (×2)</option><option value="Ex">Stegreifaufgaben (×1)</option></select></label>
       <label class="feld" style="flex:1">Kleine Leistungsnachweise 2. Halbjahr<select data-f="k2"><option value="KA">Kurzarbeiten (×2)</option><option value="Ex">Stegreifaufgaben (×1)</option></select></label>
     </div></div>`;
-  const f = await dialog('Neuen Kurs anlegen', '', [{t:'Abbrechen',w:false},{t:'Kurs anlegen',w:true,p:true,pruef:()=>{ const fa=$('dlg').querySelector('[data-f=fach]'), kl=$('dlg').querySelector('[data-f=klasse]'); if(!kl.value.trim()){ kl.focus(); return false;} if(!fa.value.trim()){ fa.focus(); toast('Bitte ein Fach eintragen.'); return false;} return true; }}], html);
+  const fP = dialog('Neuen Kurs anlegen', '', [{t:'Abbrechen',w:false},{t:'Kurs anlegen',w:true,p:true,pruef:()=>{ const fa=$('dlg').querySelector('[data-f=fach]'), kl=$('dlg').querySelector('[data-f=klasse]'); if(!kl.value.trim()){ kl.focus(); return false;} if(!fa.value.trim()){ fa.focus(); toast('Bitte ein Fach eintragen.'); return false;} return true; }}], html);
+  // Wahlpflichtfach: Fach aus der Bezeichnung der Gruppe vorschlagen
+  { const sel=$('dlg').querySelector('select[data-f=klasse]'), fa=$('dlg').querySelector('[data-f=fach]'); let auto='';
+    const vorschlag=()=>{ const b=bezAlle[sel.value]||''; if(!fa.value.trim() || fa.value===auto){ fa.value=b; auto=b; } };
+    if(sel){ sel.addEventListener('change', vorschlag); vorschlag(); } }
+  const f = await fP;
   if(!f) return;
   const kl=f.klasse.trim();
   const schueler = (alle[kl] || []).map(s=>({id:s.id, nn:s.nn, vn:s.vn}));
@@ -1813,7 +1819,7 @@ async function paketLaden(alsZusatz){
     const fm=await dialog('Zusatzpaket', 'Unter diesem Namen erscheinen die Gruppen beim Anlegen eines Kurses.', [{t:'Abbrechen',w:false},{t:'Laden',w:true,p:true}], `<div class="formular"><label class="feld">Name<input data-f="name" value="${esc(inhalt.name||'Wahlpflichtfach')}"></label></div>`);
     if(!fm) return; name=String(fm.name||'').trim()||'Wahlpflichtfach';
     D.zusatz=(D.zusatz||[]).filter(z=>z.name!==name);
-    D.zusatz.push({name, schuljahr:inhalt.schuljahr||'', erstellt:inhalt.erstellt||'', klassen:inhalt.klassen});
+    D.zusatz.push({name, schuljahr:inhalt.schuljahr||'', erstellt:inhalt.erstellt||'', klassen:inhalt.klassen, bezeichnungen:inhalt.bezeichnungen||undefined});
   } else {
     D.stamm={schuljahr:inhalt.schuljahr||'', erstellt:inhalt.erstellt||'', klassen:inhalt.klassen};
   }
@@ -1827,7 +1833,7 @@ async function paketLaden(alsZusatz){
   });
   geaendert(); persistieren();
   const doppelt = zusatz && D.stamm ? Object.keys(inhalt.klassen).filter(g=>D.stamm.klassen[g]) : [];
-  let t = zusatz ? `Zusatzpaket „${name}“: ${Object.keys(inhalt.klassen).length} Gruppe${Object.keys(inhalt.klassen).length===1?'':'n'} geladen (${Object.keys(inhalt.klassen).sort(sortKl).join(', ')}).`
+  let t = zusatz ? `Zusatzpaket „${name}“: ${Object.keys(inhalt.klassen).length} Gruppe${Object.keys(inhalt.klassen).length===1?'':'n'} geladen (${Object.keys(inhalt.klassen).sort(sortKl).map(g=>inhalt.bezeichnungen&&inhalt.bezeichnungen[g]?`${g} – ${inhalt.bezeichnungen[g]}`:g).join(', ')}).`
                  : `Schuljahr ${inhalt.schuljahr||'–'}: ${Object.keys(inhalt.klassen).length} Klassen geladen.`;
   if(doppelt.length) t+=`\n\nAchtung: ${doppelt.join(', ')} heißt genauso wie eine Klasse – beim Kurs anlegen wird dafür die Klasse verwendet.`;
   if(neuGesamt) t+=`\n\n${neuGesamt} neue Schüler wurden in deine Kurse übernommen.`;
@@ -1845,7 +1851,7 @@ function schuelerId(kl, nn, vn, belegt){
 }
 function leseSchuelerAusMappe(wb){
   const klassen={}, belegt=new Set(); let quelle='';
-  const gruppen={}, belegtG=new Set(); let hatGruppe=false;
+  const gruppen={}, belegtG=new Set(); let hatGruppe=false; const bez={};
   const plus=(kl,nn,vn)=>{ kl=String(kl==null?'':kl).trim(); nn=String(nn==null?'':nn).trim(); vn=String(vn==null?'':vn).trim(); if(!kl||!nn) return;
     (klassen[kl]=klassen[kl]||[]).push({id:schuelerId(kl,nn,vn,belegt), nn, vn}); };
   // 1) Blatt "Schule" wie in der Notenliste
@@ -1853,7 +1859,7 @@ function leseSchuelerAusMappe(wb){
     const rows=XLSX.utils.sheet_to_json(wb.Sheets['Schule'],{header:1, raw:false, defval:''});
     const kopf=rows[0]||[];
     const hatKopf = kopf.some(c=>norm(c)==='klasse');
-    if(!hatKopf){ rows.forEach(r=>plus(r[0], r[2], r[3])); quelle='Blatt „Schule“'; }
+    if(!hatKopf){ rows.forEach(r=>{ plus(r[0], r[2], r[3]); const kl=String(r[0]==null?'':r[0]).trim(), b=String(r[4]==null?'':r[4]).trim(); if(kl && b && !bez[kl] && !/^\d+([.,]\d+)?$/.test(b)) bez[kl]=b; }); quelle='Blatt „Schule“'; }
   }
   // 2) Tabellen mit Überschriften
   if(!Object.keys(klassen).length){
@@ -1879,14 +1885,16 @@ function leseSchuelerAusMappe(wb){
   }
   Object.values(klassen).forEach(l=>l.sort(sortName));
   Object.values(gruppen).forEach(l=>l.sort(sortName));
-  return {klassen, quelle, gruppen: hatGruppe ? gruppen : null};
+  // Bezeichnungen nur verwenden, wenn (fast) jede Gruppe eine hat – z. B. Notenliste_WPF (Spalte E = Fach)
+  const nKl=Object.keys(klassen).length, nBez=Object.keys(bez).length;
+  return {klassen, quelle, gruppen: hatGruppe ? gruppen : null, bez: nKl && nBez>=0.8*nKl ? bez : null};
 }
 async function verwaltungImport(){
   const f=await dateiWaehlen('.xlsx,.xlsm,.xls,.ods,.csv'); if(!f) return;
   let wb; try{ wb=XLSX.read(await f.arrayBuffer(), {type:'array'}); }catch(e){ return dialog('Datei nicht lesbar', String(e.message||e)); }
   const r=leseSchuelerAusMappe(wb);
   if(!Object.keys(r.klassen).length && !r.gruppen) return dialog('Keine Schüler gefunden','In der Datei wurde weder ein Blatt „Schule“ noch eine Tabelle mit den Spalten Klasse (bzw. Wahlpflichtfach/Gruppe), Nachname und Vorname gefunden.');
-  verwaltungDaten={...r, datei:f.name, schuljahr:(D.stamm&&D.stamm.schuljahr)||schuljahrJetzt(), art: r.gruppen ? 'zusatz' : 'haupt', name:'Wahlpflichtfach', pw:''};
+  verwaltungDaten={...r, datei:f.name, schuljahr:(D.stamm&&D.stamm.schuljahr)||schuljahrJetzt(), art: (r.gruppen||r.bez) ? 'zusatz' : 'haupt', name:'Wahlpflichtfach', pw:''};
   zeigeVerwaltungVorschau();
 }
 function verwaltungListen(v){ return v.art==='zusatz' && v.gruppen ? v.gruppen : v.klassen; }
@@ -1898,8 +1906,8 @@ function zeigeVerwaltungVorschau(){
   const doppelt=[]; kl.forEach(k=>listen[k].forEach(s=>{ if(/#\d+$/.test(s.id)) doppelt.push(`${s.nn}, ${s.vn} (${k})`); }));
   el.innerHTML=`<div style="margin-top:14px;padding:14px 16px;background:#f7f6f2;border-radius:10px">
     <p style="margin-top:0"><b>${esc(v.datei)}</b> · ${esc(v.quelle)}: <b>${kl.length} ${wort}</b>, <b>${anzahl} Schüler</b></p>
-    <p class="klein">${kl.map(k=>`${esc(k)} (${listen[k].length})`).join(' · ')}</p>
-    ${zus&&!v.gruppen?'<p class="klein" style="color:var(--warn)">Keine Spalte „Wahlpflichtfach“ bzw. „Gruppe“ gefunden – die Gruppen werden aus der Spalte „Klasse“ gebildet.</p>':''}
+    <p class="klein">${kl.map(k=>`${esc(k)}${zus&&v.bez&&v.bez[k]?' – '+esc(v.bez[k]):''} (${listen[k].length})`).join(' · ')}</p>
+    ${zus&&!v.gruppen&&!v.bez?'<p class="klein" style="color:var(--warn)">Keine Spalte „Wahlpflichtfach“ bzw. „Gruppe“ gefunden – die Gruppen werden aus der Spalte „Klasse“ gebildet.</p>':''}
     ${doppelt.length?`<p class="klein" style="color:var(--warn)">Gleicher Name doppelt in einer ${zus?'Gruppe':'Klasse'}: ${esc(doppelt.join(', '))}</p>`:''}
     <div class="zeile" style="margin-top:10px">
       <label class="feld" style="max-width:260px">Art des Pakets<select id="pkArt"><option value="haupt"${!zus?' selected':''}>Schuljahrespaket (Klassen)</option><option value="zusatz"${zus?' selected':''}>Zusatzpaket (z. B. Wahlpflichtfach)</option></select></label>
@@ -1918,7 +1926,7 @@ async function paketErstellen(){
   const v=verwaltungDaten; if(!v) return;
   const sj=$('pkSchuljahr').value.trim(), pw=$('pkPasswort').value, zus=v.art==='zusatz', name=zus?(($('pkName')&&$('pkName').value.trim())||'Wahlpflichtfach'):'';
   const inhalt={schuljahr:sj, erstellt:heuteISO(), klassen:verwaltungListen(v)};
-  if(zus){ inhalt.art='zusatz'; inhalt.name=name; }
+  if(zus){ inhalt.art='zusatz'; inhalt.name=name; if(!v.gruppen && v.bez) inhalt.bezeichnungen=v.bez; }
   let paket;
   if(pw){ if(pw.length<6){ toast('Das Passwort sollte mindestens 6 Zeichen haben.'); return; } paket=await paketVerschluesseln(inhalt, pw); }
   else { if(!(await frage('Ohne Passwort?','Das Paket enthält die Namen aller Schülerinnen und Schüler. Ohne Passwort kann es jeder öffnen, der die Datei bekommt.','Trotzdem ohne Passwort','Zurück'))) return; paket={format:'notenliste-paket', version:1, verschluesselt:false, inhalt}; }
@@ -1973,7 +1981,7 @@ const AKTIONEN = {
   verwaltungImport, paketErstellen,
   zusatzLaden: ()=>paketLaden(true),
   paketSelbst: async ()=>{ const v=verwaltungDaten;
-    if(v.art==='zusatz'){ const name=($('pkName')&&$('pkName').value.trim())||'Wahlpflichtfach'; D.zusatz=(D.zusatz||[]).filter(z=>z.name!==name); D.zusatz.push({name, schuljahr:$('pkSchuljahr').value.trim(), erstellt:heuteISO(), klassen:verwaltungListen(v)}); geaendert(); toast(`Zusatzpaket „${name}“ auf diesem Gerät übernommen.`); zeigeDaten(); return; }
+    if(v.art==='zusatz'){ const name=($('pkName')&&$('pkName').value.trim())||'Wahlpflichtfach'; D.zusatz=(D.zusatz||[]).filter(z=>z.name!==name); D.zusatz.push({name, schuljahr:$('pkSchuljahr').value.trim(), erstellt:heuteISO(), klassen:verwaltungListen(v), bezeichnungen:(!v.gruppen&&v.bez)||undefined}); geaendert(); toast(`Zusatzpaket „${name}“ auf diesem Gerät übernommen.`); zeigeDaten(); return; }
     D.stamm={schuljahr:$('pkSchuljahr').value.trim(), erstellt:heuteISO(), klassen:v.klassen}; geaendert(); toast('Klassen auf diesem Gerät übernommen.'); zeigeDaten(); },
   schuelerNeu, schluesselNeu: ()=>schluesselBearbeiten(null),
   aufgabePlus: ()=>{ const n=kurs().nachweise.find(x=>x.id===A.nwId); n.aufgaben.push(null); geaendert(); zeigeNwEditor(); },
