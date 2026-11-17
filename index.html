@@ -519,7 +519,8 @@ let D = LEER();
 let A = { seite:'start', nwId:null, refId:null };
 
 function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('notenliste',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
-async function kvSet(k,v){ const db=await idb(); await new Promise((res,rej)=>{ const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }
+async function kvSet(k,v){ if(k==='daten' && v && KR.id){ if(!KR.key) throw new Error('Die Notenliste ist gesperrt.'); v=await umschlag(v); } return kvPut(k,v); }
+async function kvPut(k,v){ const db=await idb(); await new Promise((res,rej)=>{ const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }
 async function kvGet(k){ const db=await idb(); return await new Promise((res,rej)=>{ const r=db.transaction('kv').objectStore('kv').get(k); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
 
 let speicherTimer=null, dateiTimer=null, ordnerTimer=null;
@@ -536,6 +537,205 @@ function nativHandle(name){ return { name, kind:'file', nativ:true,
 const FS_DATEI = NATIV || ('showSaveFilePicker' in window && 'showOpenFilePicker' in window);
 let dateiHandle=null, dateiOk=false, dateiBeschaeftigt=false;
 const JSON_TYPEN=[{description:'Notenliste-Daten', accept:{'application/json':['.json']}}];
+
+/* ================= Verschlüsselung (Datendatei, Sicherungen, Gerätespeicher) =================
+   Die Daten werden mit einem zufälligen Datenschlüssel (AES-256-GCM) verschlüsselt.
+   Dieser Datenschlüssel liegt nur „eingepackt“ vor: einmal mit dem Passwort (PBKDF2-SHA-256)
+   und je einmal pro Passkey/Sicherheitsschlüssel (WebAuthn-PRF → HKDF). Jeder dieser Wege entsperrt. */
+const KR = { roh:null, key:null, id:null, slots:[], stand:null };
+const PBKDF2_RUNDEN = 600000;
+const zufall = n => crypto.getRandomValues(new Uint8Array(n));
+const enc = s => new TextEncoder().encode(s);
+const b64u = buf => b64(buf).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const unb64u = s => unb64(String(s).replace(/-/g,'+').replace(/_/g,'/') + '==='.slice((String(s).length+3)%4));
+const PASSKEY_OK = !NATIV && !!window.isSecureContext && !!window.PublicKeyCredential && !!(navigator.credentials && navigator.credentials.create);
+const kryptoMeta = () => ({ id:KR.id, slots:KR.slots, stand:KR.stand });
+async function kryptoMetaSpeichern(neuerStand){ if(neuerStand) KR.stand=new Date().toISOString(); await kvPut('krypto', KR.id ? kryptoMeta() : null); }
+async function dekImport(roh){ return crypto.subtle.importKey('raw', roh, {name:'AES-GCM'}, false, ['encrypt','decrypt']); }
+async function kryptoSetzen(roh, id, slots, stand){ KR.key=await dekImport(roh); KR.roh=roh; KR.id=id; KR.slots=slots||[]; KR.stand=stand||null; }
+function kryptoZuruecksetzen(){ KR.roh=null; KR.key=null; KR.id=null; KR.slots=[]; KR.stand=null; }
+
+async function kekAusPasswort(pw, salt, runden){
+  const basis=await crypto.subtle.importKey('raw', enc(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:runden, hash:'SHA-256'}, basis, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function kekAusPRF(out){
+  const basis=await crypto.subtle.importKey('raw', out, 'HKDF', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'HKDF', hash:'SHA-256', salt:new Uint8Array(32), info:enc('notenliste-schluessel-v1')}, basis, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function slotPacken(kek, angaben){
+  const iv=zufall(12);
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM', iv, additionalData:enc('slot:'+KR.id)}, kek, KR.roh);
+  return Object.assign(angaben, {iv:b64(iv), wert:b64(ct)});
+}
+async function slotOeffnen(slot, kek, id){
+  return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM', iv:unb64(slot.iv), additionalData:enc('slot:'+id)}, kek, unb64(slot.wert)));
+}
+async function passwortSlot(pw){ const salt=zufall(16); return slotPacken(await kekAusPasswort(pw, salt, PBKDF2_RUNDEN), {art:'passwort', salt:b64(salt), runden:PBKDF2_RUNDEN}); }
+async function umschlag(obj){
+  const iv=zufall(12);
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM', iv, additionalData:enc('daten:'+KR.id)}, KR.key, enc(JSON.stringify(obj)));
+  return {verschluesselt:true, id:KR.id, iv:b64(iv), daten:b64(ct)};
+}
+async function umschlagOeffnen(u, key, id){
+  key=key||KR.key; id=id||u.id||KR.id;
+  const pt=await crypto.subtle.decrypt({name:'AES-GCM', iv:unb64(u.iv), additionalData:enc('daten:'+id)}, key, unb64(u.daten));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+/* ---- Passkey / Sicherheitsschlüssel (WebAuthn mit PRF-Erweiterung) ---- */
+async function passkeyPRF(slots){
+  const ev={}; slots.forEach(s=>{ ev[s.credId]={first:unb64(s.prfSalt)}; });
+  const a=await navigator.credentials.get({publicKey:{challenge:zufall(32), timeout:120000, userVerification:'required',
+    allowCredentials:slots.map(s=>({type:'public-key', id:unb64u(s.credId)})), extensions:{prf:{evalByCredential:ev}}}});
+  if(!a) throw new Error('Abgebrochen.');
+  const ext=a.getClientExtensionResults()||{}, out=ext.prf && ext.prf.results && ext.prf.results.first;
+  if(!out) throw new Error('Der Schlüssel hat keinen Entschlüsselungswert geliefert. Browser oder Schlüssel unterstützen die nötige Funktion (WebAuthn-PRF) nicht.');
+  const id=b64u(a.rawId), slot=slots.find(s=>s.credId===id);
+  if(!slot) throw new Error('Dieser Schlüssel gehört nicht zu dieser Notenliste.');
+  return {out, slot};
+}
+async function passkeyEntsperren(meta){
+  const {out, slot}=await passkeyPRF(meta.slots.filter(s=>s.art==='passkey'));
+  return slotOeffnen(slot, await kekAusPRF(out), meta.id);
+}
+async function passwortEntsperren(meta, pw){
+  for(const s of meta.slots.filter(s=>s.art==='passwort')){
+    try{ return await slotOeffnen(s, await kekAusPasswort(pw, unb64(s.salt), s.runden||PBKDF2_RUNDEN), meta.id); }catch(e){}
+  }
+  throw new Error('Falsches Passwort.');
+}
+const passkeyFehler = e => e && (e.name==='NotAllowedError' || e.name==='AbortError') ? 'Abgebrochen oder Zeit abgelaufen.' : String((e && e.message) || e);
+
+// liefert den Datenschlüssel (roh), 'reset' oder null (abgebrochen)
+async function entsperrDialog(meta, opt){
+  opt=opt||{};
+  const hatPw=meta.slots.some(s=>s.art==='passwort'), hatPk=PASSKEY_OK && meta.slots.some(s=>s.art==='passkey');
+  let fehler='';
+  for(;;){
+    const kn=[];
+    if(opt.abbrechbar) kn.push({t:'Abbrechen', w:false});
+    if(opt.reset) kn.push({t:'Zurücksetzen …', w:'reset', d:true});
+    if(hatPk) kn.push({t:'🔑 Passkey / Schlüssel', w:'passkey', p:!hatPw});
+    if(hatPw) kn.push({t:'Entsperren', w:'pw', p:true});
+    const text=(opt.text||'Die Daten sind verschlüsselt.')+(hatPk?' Du kannst dein Passwort oder einen Passkey bzw. Sicherheitsschlüssel verwenden.':'')+(fehler?`\n\n⚠ ${fehler}`:'');
+    const f=await dialog(opt.titel||'Notenliste entsperren', text, kn,
+      hatPw ? `<div class="formular"><input type="password" data-f="pw" autocomplete="current-password" placeholder="Passwort"></div>` : '<span></span>');
+    if(!f){ if(opt.abbrechbar) return null; continue; }
+    if(f._knopf==='reset') return 'reset';
+    if(f._knopf==='passkey'){ try{ return await passkeyEntsperren(meta); }catch(e){ fehler=passkeyFehler(e); } continue; }
+    if(!f.pw){ fehler='Bitte das Passwort eingeben.'; continue; }
+    setStatus('Prüfe Passwort …');
+    try{ const r=await passwortEntsperren(meta, f.pw); setStatus(''); return r; }catch(e){ setStatus(''); fehler=e.message; }
+  }
+}
+let entsperrLaeuft=null;
+function entsperrenEinmal(meta, opt){ if(!entsperrLaeuft) entsperrLaeuft=entsperrDialog(meta, opt).finally(()=>{ entsperrLaeuft=null; }); return entsperrLaeuft; }
+
+// beim Start: Gerätespeicher entsperren
+async function startEntsperren(meta, g){
+  KR.id=meta.id; KR.slots=meta.slots||[]; KR.stand=meta.stand||null;
+  for(;;){
+    const r=await entsperrDialog(meta, {reset:true, text:'Die Noten sind verschlüsselt. Bitte entsperre die Notenliste.'});
+    if(r==='reset'){
+      if(await frage('Notenliste auf diesem Gerät zurücksetzen?','Die verschlüsselten Daten in diesem Browser werden gelöscht. Deine Datendatei (z. B. in OneDrive oder auf der NAS) bleibt erhalten – zum Öffnen brauchst du aber ebenfalls das Passwort oder einen Passkey.','Löschen','Zurück',true)){
+        kryptoZuruecksetzen(); await kvPut('daten', null); await kvPut('krypto', null); return null; }
+      continue;
+    }
+    await kryptoSetzen(r, meta.id, meta.slots, meta.stand);
+    if(!g || !g.verschluesselt) return g;
+    try{ return await umschlagOeffnen(g); }
+    catch(e){ await dialog('Gespeicherte Daten nicht lesbar', 'Der Speicher in diesem Browser ist beschädigt. Öffne deine Datendatei erneut unter „Daten & Einstellungen“.\n\n'+(e.message||e)); return null; }
+  }
+}
+
+// verschlüsselte Datendatei öffnen (fremder Schlüssel → nach Passwort/Passkey fragen und übernehmen)
+async function dateiEntschluesseln(j, name){
+  const m=j.krypto;
+  if(KR.key && m.id===KR.id){
+    if((m.stand||'')>(KR.stand||'')){ KR.slots=m.slots; KR.stand=m.stand; await kryptoMetaSpeichern(false); }
+    return umschlagOeffnen(j);
+  }
+  const roh=await entsperrenEinmal(m, {abbrechbar:true, titel:'Datendatei ist verschlüsselt',
+    text:`„${name||'Die Datendatei'}“ ist verschlüsselt.`+(KR.id?' Sie verwendet einen anderen Schlüssel als dieses Gerät; nach dem Entsperren übernimmt das Gerät ihn.':'')});
+  if(!roh) return null;
+  const d=await umschlagOeffnen(j, await dekImport(roh), m.id);
+  await kryptoSetzen(roh, m.id, m.slots, m.stand); await kryptoMetaSpeichern(false); await kvSet('daten', D);
+  return d;
+}
+
+/* ---- Einstellungen ---- */
+function pwFormular(){ return `<div class="formular"><label class="feld">Neues Passwort<input type="password" data-f="pw1" autocomplete="new-password"></label><label class="feld">Wiederholen<input type="password" data-f="pw2" autocomplete="new-password"></label></div>`; }
+function pwPruefen(f){
+  if(!f.pw1 || f.pw1.length<10){ toast('Das Passwort sollte mindestens 10 Zeichen haben.'); return false; }
+  if(f.pw1!==f.pw2){ toast('Die Passwörter stimmen nicht überein.'); return false; }
+  return true;
+}
+async function kryptoEinrichten(){
+  const f=await dialog('Verschlüsselung einrichten',
+    'Ab jetzt werden Datendatei, Kopien, tägliche Sicherungen und der Speicher in diesem Browser verschlüsselt. Beim Start der Notenliste und beim Öffnen der Datei an einem anderen Gerät brauchst du das Passwort (oder später einen Passkey).\n\nWICHTIG: Ohne Passwort bzw. Passkey sind die Noten nicht wiederherstellbar. Lege das Passwort in deinem Passwortmanager ab.',
+    [{t:'Abbrechen',w:false},{t:'Verschlüsseln',w:true,p:true}], pwFormular());
+  if(!f) return;
+  if(!pwPruefen(f)) return kryptoEinrichten();
+  setStatus('Verschlüssele …');
+  await kryptoSetzen(zufall(32), uid()+uid(), [], null);
+  KR.slots=[await passwortSlot(f.pw1)];
+  await kryptoMetaSpeichern(true);
+  geaendert(); zeigeDaten();
+  await dialog('Verschlüsselung aktiv', (dateiHandle?`„${dateiHandle.name}“ wird gleich verschlüsselt gespeichert. `:'')+'Ältere Kopien und Sicherungen, die vorher entstanden sind, bleiben unverschlüsselt – lösche sie am besten.'+(PASSKEY_OK?'\n\nTipp: Füge einen Passkey oder Sicherheitsschlüssel hinzu, dann entsperrst du mit Face ID, Touch ID, Windows Hello oder YubiKey.':''));
+}
+async function kryptoPasswort(){
+  const f=await dialog('Passwort ändern','Das neue Passwort gilt ab dem nächsten Speichern auch für die Datendatei. Ältere Kopien und Sicherungen lassen sich weiterhin mit dem alten Passwort öffnen.',
+    [{t:'Abbrechen',w:false},{t:'Ändern',w:true,p:true}], pwFormular());
+  if(!f) return;
+  if(!pwPruefen(f)) return kryptoPasswort();
+  KR.slots=[...KR.slots.filter(s=>s.art!=='passwort'), await passwortSlot(f.pw1)];
+  await kryptoMetaSpeichern(true); geaendert(); zeigeDaten(); toast('Passwort geändert.');
+}
+async function passkeyNeu(){
+  const f=await dialog('Passkey / Sicherheitsschlüssel hinzufügen','Gib dem Schlüssel einen Namen, z. B. „YubiKey“ oder „iPad (Face ID)“. Danach fragt der Browser nach dem Schlüssel bzw. nach Face ID, Touch ID oder Windows Hello.',
+    [{t:'Abbrechen',w:false},{t:'Weiter',w:true,p:true}], `<div class="formular"><input data-f="name" placeholder="Name des Schlüssels" autocomplete="off"></div>`);
+  if(!f) return;
+  const name=String(f.name||'').trim()||'Passkey', prfSalt=zufall(32), wer='Notenliste'+(D.lehrkraft?' – '+D.lehrkraft:'');
+  let cred;
+  try{
+    cred=await navigator.credentials.create({publicKey:{rp:{name:'Notenliste'}, user:{id:zufall(16), name:wer, displayName:wer},
+      challenge:zufall(32), timeout:120000, pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{userVerification:'required', residentKey:'discouraged'}, extensions:{prf:{eval:{first:prfSalt}}}}});
+  }catch(e){ return dialog('Kein Passkey angelegt', passkeyFehler(e)); }
+  if(!cred) return;
+  const ext=cred.getClientExtensionResults()||{};
+  if(!ext.prf || ext.prf.enabled===false) return dialog('Nicht unterstützt','Dieser Schlüssel bzw. Browser unterstützt die nötige Funktion (WebAuthn-PRF) nicht. Der eben angelegte Passkey kann nicht zum Entschlüsseln verwendet werden – du kannst ihn in der Passkey-Verwaltung deines Geräts löschen.\n\nUnterstützt werden z. B. aktuelle Versionen von Chrome, Edge und Safari (ab iOS/macOS 18) sowie YubiKeys ab Serie 5.');
+  const slotNeu={art:'passkey', name, credId:b64u(cred.rawId), prfSalt:b64(prfSalt)};
+  let out=ext.prf.results && ext.prf.results.first;
+  if(!out){
+    await dialog('Noch einmal bestätigen','Der Schlüssel ist angelegt. Bitte bestätige ihn jetzt noch einmal, damit er mit der Notenliste verknüpft wird.');
+    try{ out=(await passkeyPRF([slotNeu])).out; }catch(e){ return dialog('Passkey nicht verknüpft', passkeyFehler(e)); }
+  }
+  KR.slots=[...KR.slots, await slotPacken(await kekAusPRF(out), slotNeu)];
+  await kryptoMetaSpeichern(true); geaendert(); zeigeDaten(); toast(`„${name}“ hinzugefügt.`);
+}
+async function passkeyEntfernen(credId){
+  const s=KR.slots.find(x=>x.credId===credId); if(!s) return;
+  if(!(await frage('Passkey entfernen?',`„${s.name}“ kann die Notenliste danach nicht mehr entsperren. Ältere Kopien der Datendatei lassen sich mit ihm weiterhin öffnen.`,'Entfernen','Abbrechen',true))) return;
+  KR.slots=KR.slots.filter(x=>x!==s); await kryptoMetaSpeichern(true); geaendert(); zeigeDaten(); toast('Passkey entfernt.');
+}
+async function kryptoAus(){
+  if(!(await frage('Verschlüsselung ausschalten?','Datendatei, Sicherungen und der Speicher in diesem Browser werden danach wieder unverschlüsselt gespeichert. Die Schülerdaten sind dann für jeden lesbar, der die Datei bekommt.','Ausschalten','Abbrechen',true))) return;
+  kryptoZuruecksetzen(); await kryptoMetaSpeichern(false); geaendert(); zeigeDaten(); toast('Verschlüsselung ausgeschaltet.');
+}
+function kryptoKarte(){
+  if(!KR.id) return `<div class="karte"><h2>Verschlüsselung</h2>
+    <p>Die Datendatei enthält Namen und Noten aller Schülerinnen und Schüler. Mit einem Passwort verschlüsselt, kann niemand sie lesen – auch nicht, wenn die Datei in die falschen Hände gerät (Cloud, NAS, verlorener Stick).</p>
+    <div class="zeile"><button class="primary" data-aktion="kryptoEinrichten">Verschlüsselung einrichten …</button></div></div>`;
+  const pks=KR.slots.filter(s=>s.art==='passkey');
+  return `<div class="karte"><h2>Verschlüsselung</h2>
+    <p><span style="color:var(--ok)">✓ Aktiv.</span> Datendatei, Kopien, tägliche Sicherungen und der Speicher in diesem Browser sind verschlüsselt (AES-256).</p>
+    <p><b>Entsperren mit:</b> Passwort${pks.length?'':' (noch kein Passkey)'}</p>
+    ${pks.length?`<ul style="margin:4px 0 8px">${pks.map(s=>`<li>🔑 ${esc(s.name)} <button class="link klein" data-pkweg="${esc(s.credId)}">entfernen</button></li>`).join('')}</ul>`:''}
+    <div class="zeile"><button data-aktion="kryptoPasswort">Passwort ändern …</button>${PASSKEY_OK?'<button data-aktion="passkeyNeu">+ Passkey / Sicherheitsschlüssel …</button>':''}<button class="link klein" data-aktion="kryptoAus">Verschlüsselung ausschalten …</button></div>
+    <p class="klein">${PASSKEY_OK?'Passkeys (Face ID, Touch ID, Windows Hello) und Sicherheitsschlüssel wie YubiKey gelten nur für diese Web-Adresse. Das Passwort funktioniert immer.':'Passkeys und Sicherheitsschlüssel gehen nur, wenn die Notenliste über eine https-Adresse geöffnet wird (z. B. GitHub Pages) – nicht in der iPad-App und nicht als lokale Datei.'}</p></div>`;
+}
 
 function geaendert(){
   D.geaendert=new Date().toISOString();
@@ -556,10 +756,20 @@ function hatDaten(d){ return !!(d && ((d.kurse&&d.kurse.length) || d.stamm || (d
 function allePakete(){ return [D.stamm, ...(D.zusatz||[])].filter(Boolean); }
 function alleKlassen(){ const o={}; allePakete().forEach(p=>Object.entries(p.klassen||{}).forEach(([k,l])=>{ if(!o[k]) o[k]=l; })); return o; }
 const sortKl = (a,b)=>a.localeCompare(b,'de',{numeric:true});
-function datenJSON(){ return JSON.stringify({format:'notenliste-daten', version:1, geaendert:D.geaendert||new Date().toISOString(), daten:D}, null, 1); }
-function leseDatenDatei(text){
+async function datenDateiText(d){
+  d=d||D;
+  const kopf={format:'notenliste-daten', version:1, geaendert:d.geaendert||new Date().toISOString()};
+  if(!KR.id) return JSON.stringify(Object.assign(kopf, {daten:d}), null, 1);
+  return JSON.stringify(Object.assign(kopf, {version:2, krypto:kryptoMeta()}, await umschlag(d)), null, 1);
+}
+async function leseDatenDatei(text, name){
   if(!text || !text.trim()) return {leer:true};
   let j; try{ j=JSON.parse(text); }catch(e){ return {fehler:'Die Datei ist keine gültige JSON-Datei.'}; }
+  if(j && j.verschluesselt){
+    if(j.format!=='notenliste-daten' || !j.krypto || !Array.isArray(j.krypto.slots)) return {fehler:'Diese Datei enthält keine Daten der Notenliste.'};
+    try{ const d=await dateiEntschluesseln(j, name); if(!d) return {gesperrt:true}; j.daten=d; }
+    catch(e){ return {fehler:'Die Datei konnte nicht entschlüsselt werden ('+(e.message||e)+').'}; }
+  }
   if(!j || !j.daten || !['notenliste-daten','notenliste-sicherung'].includes(j.format)) return {fehler:'Diese Datei enthält keine Daten der Notenliste.'};
   if(!j.daten.geaendert) j.daten.geaendert = j.geaendert || j.erstellt || new Date(0).toISOString();
   return {daten:j.daten};
@@ -580,11 +790,12 @@ async function dateiSchreiben(erzwingen){
   dateiBeschaeftigt=true;
   try{
     if(!erzwingen){
-      const ext=leseDatenDatei(await (await dateiHandle.getFile()).text());
+      const ext=await leseDatenDatei(await (await dateiHandle.getFile()).text(), dateiHandle.name);
+      if(ext.gesperrt){ dateiOk=false; dateiBeschaeftigt=false; setStatus('⚠ Datei gesperrt'); pruefeHinweis(); return; }
       const extStand = ext.daten && ext.daten.geaendert;
       if(extStand && D.dateiStand && extStand!==D.dateiStand){ dateiBeschaeftigt=false; await konflikt(ext.daten); return; }
     }
-    const w=await dateiHandle.createWritable(); await w.write(datenJSON()); await w.close();
+    const text=await datenDateiText(); const w=await dateiHandle.createWritable(); await w.write(text); await w.close();
     D.dateiStand=D.geaendert; D.letzteSicherung=new Date().toISOString(); await kvSet('daten', D);
     setStatus(`✓ Gespeichert in ${dateiHandle.name}`); pruefeHinweis();
   }catch(e){
@@ -598,14 +809,15 @@ async function konflikt(extDaten){
   const a=await dialog('Datei wurde woanders geändert',
     `„${dateiHandle.name}“ wurde inzwischen an einem anderen Gerät geändert (Stand ${zeitTxt(extDaten.geaendert)}).\nAuch hier gibt es Änderungen, die noch nicht in der Datei stehen (Stand ${zeitTxt(D.geaendert)}).\n\nWelchen Stand möchtest du behalten? Der andere wird vorsichtshalber als Kopie heruntergeladen.`,
     [{t:'Stand aus der Datei laden',w:'datei'},{t:'Stand von diesem Gerät behalten',w:'hier',p:true}]);
-  if(a==='datei'){ download(`Notenliste_Kopie_dieses_Geraets_${heuteISO()}.json`, datenJSON()); datenUebernehmen(extDaten); await kvSet('daten',D); toast('Stand aus der Datei geladen.'); }
-  else if(a==='hier'){ download(`Notenliste_Kopie_aus_Datei_${heuteISO()}.json`, JSON.stringify({format:'notenliste-daten',version:1,geaendert:extDaten.geaendert,daten:extDaten},null,1)); D.dateiStand=extDaten.geaendert; await dateiSchreiben(true); toast('Datei mit dem Stand dieses Geräts überschrieben.'); }
+  if(a==='datei'){ download(`Notenliste_Kopie_dieses_Geraets_${heuteISO()}.json`, await datenDateiText()); datenUebernehmen(extDaten); await kvSet('daten',D); toast('Stand aus der Datei geladen.'); }
+  else if(a==='hier'){ download(`Notenliste_Kopie_aus_Datei_${heuteISO()}.json`, await datenDateiText(extDaten)); D.dateiStand=extDaten.geaendert; await dateiSchreiben(true); toast('Datei mit dem Stand dieses Geräts überschrieben.'); }
 }
 // beim Start, beim Verbinden und wenn das Fenster wieder aktiv wird
 async function dateiAbgleich(){
   if(!dateiHandle || !dateiOk || dateiBeschaeftigt) return;
   let ext;
-  try{ ext=leseDatenDatei(await (await dateiHandle.getFile()).text()); }catch(e){ dateiOk=false; setStatus('⚠ Datei nicht erreichbar'); return; }
+  try{ ext=await leseDatenDatei(await (await dateiHandle.getFile()).text(), dateiHandle.name); }catch(e){ dateiOk=false; setStatus('⚠ Datei nicht erreichbar'); return; }
+  if(ext.gesperrt){ dateiOk=false; setStatus('⚠ Datei gesperrt'); pruefeHinweis(); return; }
   if(ext.fehler){ dateiOk=false; return dialog('Datei nicht lesbar', `„${dateiHandle.name}“: ${ext.fehler}\n\nDeine Daten auf diesem Gerät sind nicht betroffen. Wähle unter „Daten & Einstellungen“ eine andere Datei.`); }
   if(ext.leer){ await dateiSchreiben(true); return; }
   const extStand=ext.daten.geaendert, lokalGeaendert = D.geaendert && D.geaendert!==D.dateiStand;
@@ -614,7 +826,7 @@ async function dateiAbgleich(){
   if(!D.dateiStand){
     const a=await dialog('Welche Daten verwenden?', `Die Datei „${dateiHandle.name}“ enthält bereits Daten (Stand ${zeitTxt(extStand)}). Auch auf diesem Gerät sind Daten vorhanden (Stand ${zeitTxt(D.geaendert)}).`,
       [{t:'Daten aus der Datei verwenden',w:'datei'},{t:'Daten dieses Geräts in die Datei schreiben',w:'hier',p:true}]);
-    if(a==='datei'){ download(`Notenliste_Kopie_dieses_Geraets_${heuteISO()}.json`, datenJSON()); datenUebernehmen(ext.daten); await kvSet('daten',D); }
+    if(a==='datei'){ download(`Notenliste_Kopie_dieses_Geraets_${heuteISO()}.json`, await datenDateiText()); datenUebernehmen(ext.daten); await kvSet('daten',D); }
     else if(a==='hier'){ await dateiSchreiben(true); }
     else { dateiOk=false; }
     return;
@@ -632,7 +844,7 @@ async function dateiVerbinden(handle, neu){
   persistieren(); pruefeHinweis(); if(A.seite==='daten') zeigeDaten();
 }
 async function dateiNeu(){
-  if(NATIV){ try{ const name=await nativ('neu',{name:'Notenliste_Daten.json', text:datenJSON()}); if(!name) return; D.dateiStand=null; await dateiVerbinden(nativHandle(name), true); toast(`Daten werden ab jetzt in „${name}“ gespeichert.`); }catch(e){ if(!/abgebrochen/.test(e.message)) dialog('Datei konnte nicht angelegt werden', String(e.message||e)); } return; }
+  if(NATIV){ try{ const name=await nativ('neu',{name:'Notenliste_Daten.json', text:await datenDateiText()}); if(!name) return; D.dateiStand=null; await dateiVerbinden(nativHandle(name), true); toast(`Daten werden ab jetzt in „${name}“ gespeichert.`); }catch(e){ if(!/abgebrochen/.test(e.message)) dialog('Datei konnte nicht angelegt werden', String(e.message||e)); } return; }
   if(!FS_DATEI) return dateiSpeichernManuell();
   try{ const h=await window.showSaveFilePicker({suggestedName:'Notenliste_Daten.json', types:JSON_TYPEN, id:'notenliste'}); D.dateiStand=null; await dateiVerbinden(h, true); toast(`Daten werden ab jetzt in „${h.name}“ gespeichert.`); }
   catch(e){ if(e.name!=='AbortError') dialog('Datei konnte nicht angelegt werden', String(e.message||e)); }
@@ -655,7 +867,8 @@ document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState=
 /* ---- iPad / Safari / Firefox: Datei öffnen und speichern von Hand ---- */
 async function dateiOeffnenManuell(){
   const f=await dateiWaehlen('.json,application/json'); if(!f) return;
-  const ext=leseDatenDatei(await f.text());
+  const ext=await leseDatenDatei(await f.text(), f.name);
+  if(ext.gesperrt) return;
   if(ext.leer||ext.fehler) return dialog('Datei nicht lesbar', ext.fehler||'Die Datei ist leer.');
   const lokalGeaendert = D.geaendert && D.geaendert!==D.dateiStand && hatDaten(D);
   if(lokalGeaendert){
@@ -667,11 +880,11 @@ async function dateiOeffnenManuell(){
 }
 async function dateiSpeichernManuell(still, name){
   name = name || 'Notenliste_Daten.json';
-  const datei=new File([datenJSON()], name, {type:'application/json'});
+  const text=await datenDateiText(), datei=new File([text], name, {type:'application/json'});
   let ok=false;
   try{ if(navigator.canShare && navigator.canShare({files:[datei]}) && /iPad|iPhone|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document){ await navigator.share({files:[datei], title:'Notenliste-Daten'}); ok=true; } }
   catch(e){ if(e.name==='AbortError') return; }
-  if(!ok) download(name, datenJSON());
+  if(!ok) download(name, text);
   if(!still){ D.dateiStand=D.geaendert; D.letzteSicherung=new Date().toISOString(); await kvSet('daten',D); pruefeHinweis(); toast('Datei gespeichert.'); }
 }
 function download(name, inhalt, typ){
@@ -679,7 +892,7 @@ function download(name, inhalt, typ){
   const b=new Blob([inhalt],{type:typ||'application/json'}); const u=URL.createObjectURL(b);
   const a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),2000);
 }
-async function kopieHerunterladen(){ download(`Notenliste_Sicherung_${heuteISO()}.json`, datenJSON()); if(!dateiOk){ D.letzteSicherung=new Date().toISOString(); await kvSet('daten',D); pruefeHinweis(); } toast('Kopie wird heruntergeladen.'); }
+async function kopieHerunterladen(){ download(`Notenliste_Sicherung_${heuteISO()}.json`, await datenDateiText()); if(!dateiOk){ D.letzteSicherung=new Date().toISOString(); await kvSet('daten',D); pruefeHinweis(); } toast('Kopie wird heruntergeladen.'); }
 
 /* ---- zusätzliche tägliche Sicherungen in einen Ordner (Chrome/Edge) ---- */
 let ordnerHandle=null;
@@ -688,7 +901,7 @@ async function ordnerSichern(){
   try{
     if((await ordnerHandle.queryPermission({mode:'readwrite'}))!=='granted') return;
     const s=await ordnerHandle.getDirectoryHandle('Sicherungen',{create:true});
-    const h=await s.getFileHandle(`Notenliste_${heuteISO()}.json`,{create:true}); const w=await h.createWritable(); await w.write(datenJSON()); await w.close();
+    const h=await s.getFileHandle(`Notenliste_${heuteISO()}.json`,{create:true}); const text=await datenDateiText(); const w=await h.createWritable(); await w.write(text); await w.close();
     const alle=[]; for await (const [n,x] of s.entries()) if(x.kind==='file' && /^Notenliste_\d{4}-\d\d-\d\d\.json$/.test(n)) alle.push(n);
     alle.sort(); while(alle.length>60) await s.removeEntry(alle.shift());
   }catch(e){ console.warn('Ordnersicherung', e); }
@@ -1719,6 +1932,7 @@ function zeigeDaten(){
     <div class="zeile" style="margin-top:6px"><button class="klein" data-aktion="kopieHerunterladen">Kopie herunterladen</button>
     ${'showDirectoryPicker' in window?`<button class="klein" data-aktion="ordnerWaehlen">${ordnerHandle?'Ordner für tägliche Sicherungen ändern …':'Tägliche Sicherungen in einen Ordner …'}</button>${ordnerHandle?`<span class="muted klein">Sicherungen in <b>${esc(ordnerHandle.name)}/Sicherungen</b></span><button class="link klein" data-aktion="ordnerFreigeben">Zugriff erneuern</button>`:''}`:''}</div>
   </div>
+  ${kryptoKarte()}
   <div class="karte"><h2>Schuljahrespaket</h2>
     <p>${st?`Geladen: Schuljahr <b>${esc(st.schuljahr||'–')}</b>, ${Object.keys(st.klassen).length} Klassen, ${Object.values(st.klassen).reduce((a,l)=>a+l.length,0)} Schüler (Stand ${esc(datumText(st.erstellt)||'–')}).`:'Noch kein Schuljahrespaket geladen.'}</p>
     ${(D.zusatz||[]).length?`<p style="margin-top:10px"><b>Zusatzpakete:</b></p><ul style="margin:4px 0 8px">${D.zusatz.map(z=>`<li>${esc(z.name)}: ${Object.keys(z.klassen).length} Gruppe${Object.keys(z.klassen).length===1?'':'n'}, ${Object.values(z.klassen).reduce((a,l)=>a+l.length,0)} Schüler${z.schuljahr?` (Schuljahr ${esc(z.schuljahr)})`:''} <button class="link klein" data-zusatzweg="${esc(z.name)}">entfernen</button></li>`).join('')}</ul>`:''}
@@ -1748,6 +1962,7 @@ function zeigeDaten(){
   $('daten').querySelectorAll('[data-zusatzweg]').forEach(b=>b.onclick=async()=>{ const n=b.dataset.zusatzweg;
     if(!(await frage('Zusatzpaket entfernen?', `Die Schülerliste „${n}“ wird von diesem Gerät entfernt. Bereits angelegte Kurse und ihre Noten bleiben erhalten.`, 'Entfernen'))) return;
     D.zusatz=(D.zusatz||[]).filter(z=>z.name!==n); geaendert(); zeigeDaten(); toast(`„${n}“ entfernt.`); });
+  $('daten').querySelectorAll('[data-pkweg]').forEach(b=>b.onclick=()=>passkeyEntfernen(b.dataset.pkweg));
   $('daten').querySelectorAll('[data-fkat]').forEach(b=>b.onclick=async()=>{ await formulierungenBearbeiten(b.dataset.fkat); zeigeDaten(); });
   if(verwaltungDaten) zeigeVerwaltungVorschau();
 }
@@ -1975,6 +2190,7 @@ function druckNachweis(){
 
 /* ================= Aktionen ================= */
 const AKTIONEN = {
+  kryptoEinrichten, kryptoPasswort, passkeyNeu, kryptoAus,
   paketLaden, kursNeu, ordnerWaehlen, ordnerFreigeben, dateiNeu, dateiOeffnen, dateiTrennen, kopieHerunterladen, dateiErneutVerbinden,
   dateiSpeichern: ()=>dateiSpeichernManuell(),
   zuVerwaltung: ()=>{ zeigeSeite('daten'); setTimeout(()=>$('verwaltung').scrollIntoView({behavior:'smooth'}),50); },
@@ -2002,7 +2218,7 @@ const AKTIONEN = {
     D.kurse=D.kurse.filter(x=>x!==k); D.aktKurs=D.kurse[0]?D.kurse[0].id:null; geaendert(); fuelleKursWahl(); zeigeSeite(D.aktKurs?'uebersicht':'start'); },
   allesLoeschen: async ()=>{
     if(!(await frage('Alle Daten löschen?','Alle Kurse, Noten und Schülerlisten werden von diesem Gerät gelöscht. Das lässt sich nicht rückgängig machen.','Alles löschen','Abbrechen',true))) return;
-    D=LEER(); await kvSet('daten',D); fuelleKursWahl(); zeigeSeite('start'); pruefeHinweis(); },
+    kryptoZuruecksetzen(); await kryptoMetaSpeichern(false); D=LEER(); await kvSet('daten',D); fuelleKursWahl(); zeigeSeite('start'); pruefeHinweis(); },
   druckUebersicht, druckKlassenliste, druckNachweis, nsKopieren, nsDrucken,
   refEintragen: ()=>refEintragenKlick(), refLoeschen, refDrucken: ()=>{ const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(r) drucken(refBogenHTML(k,r),{hoch:true}); },
   refLeerDrucken: ()=>drucken(refBogenHTML(kurs(),null),{hoch:true}),
@@ -2017,7 +2233,7 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   }).catch(e=>console.warn('SW',e));
 }
 (async()=>{
-  try{ const g=await kvGet('daten'); if(g && g.version) D=Object.assign(LEER(), g); }catch(e){ dialog('Speicher nicht verfügbar', 'Dieser Browser erlaubt kein Speichern (z. B. privates Fenster). Noten gehen beim Schließen verloren.\n\n'+(e.message||e)); }
+  try{ let g=await kvGet('daten'); const m=await kvGet('krypto'); if(m && m.id) g=await startEntsperren(m, g); if(g && g.version) D=Object.assign(LEER(), g); }catch(e){ dialog('Speicher nicht verfügbar', 'Dieser Browser erlaubt kein Speichern (z. B. privates Fenster). Noten gehen beim Schließen verloren.\n\n'+(e.message||e)); }
   try{ const h=await kvGet('ordner'); if(h && h.queryPermission) ordnerHandle=h; }catch(e){}
   try{ const h=await kvGet('datei'); if(h && h.nativ && NATIV){ const name=await nativ('info'); if(name) dateiHandle=nativHandle(name); } else if(h && h.queryPermission) dateiHandle=h; }catch(e){}
   if(D.aktKurs && !kurs()) D.aktKurs=D.kurse[0]?D.kurse[0].id:null;
