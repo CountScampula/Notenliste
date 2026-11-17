@@ -5,6 +5,13 @@ Alle Noten bleiben auf dem Gerät der Lehrkraft – dieses Repository enthält n
 
 Zusätzlich: `bewertungsbogen.html` – eigenständiger Bewertungsbogen mit Wortgutachten (1–3 Teilaufgaben, optional Zweitkorrektur) ohne Klassenlisten; Schüler werden als Liste eingefügt.
 
+## Verschlüsselung
+Unter „Daten & Einstellungen → Verschlüsselung“ lässt sich die Datendatei mit einem Passwort verschlüsseln (AES-256-GCM, Schlüssel aus dem Passwort per PBKDF2-SHA-256 mit 600.000 Durchläufen). Verschlüsselt werden Datendatei, Kopien, tägliche Sicherungen und der Speicher im Browser; beim Start fragt die App nach dem Passwort.
+
+Zusätzlich können Passkeys bzw. Sicherheitsschlüssel (Face ID, Touch ID, Windows Hello, YubiKey) hinterlegt werden (WebAuthn mit PRF-Erweiterung). Das funktioniert nur über eine https-Adresse wie GitHub Pages und ist an diese Adresse gebunden. Das Passwort bleibt immer als Rückfallebene.
+
+Ohne Passwort bzw. Passkey lassen sich verschlüsselte Daten **nicht** wiederherstellen.
+
 ## Veröffentlichen (GitHub Pages)
 1. Alle Dateien dieses Ordners in das Repository hochladen (Hauptebene).
 2. Settings → Pages → „Deploy from a branch“ → Branch `main`, Ordner `/ (root)` → Save.
