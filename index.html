@@ -1623,7 +1623,7 @@ async function formulierungenBearbeiten(kat){
 }
 
 /* ================= Referate ================= */
-// Bewertungsbogen: 15 Kriterien à 0–4 Punkte; Inhalt ×1, Darstellung ×1, Vortrag ×2 = max. 80 Punkte.
+// Bewertungsbogen: 14 Kriterien à 0–4 Punkte; Inhalt ×1 (20), Darstellung ×1 (16), Vortrag ×2 (40) = max. 76 Punkte.
 // Ergebnis (Notenpunkte) wird als mündliche Note im gewählten Halbjahr eingetragen.
 const REF_BEREICHE = [
   { id:'a', name:'Inhalt', faktor:1, k:[
@@ -1636,8 +1636,7 @@ const REF_BEREICHE = [
     ['Medienwahl','Passende Medien (Folien, Plakat, Tafel, Modell) sinnvoll eingesetzt'],
     ['Übersichtlichkeit','Gut lesbar, angemessene Textmenge und Schriftgröße'],
     ['Visualisierung','Bilder, Grafiken oder Schaubilder unterstützen den Inhalt'],
-    ['Sprachliche Richtigkeit','Rechtschreibung und Grammatik in den Materialien'],
-    ['Ergebnissicherung','Handout oder Zusammenfassung für die Zuhörenden'] ]},
+    ['Sprachliche Richtigkeit','Rechtschreibung und Grammatik in den Materialien'] ]},
   { id:'c', name:'Vortrag', faktor:2, k:[
     ['Freies Sprechen','Mit Stichwortkarten statt Ablesen'],
     ['Sprechweise','Lautstärke, Tempo, Deutlichkeit, Pausen'],
@@ -1646,7 +1645,7 @@ const REF_BEREICHE = [
     ['Zeit und Rückfragen','Zeitrahmen eingehalten, sicher auf Fragen reagiert'] ]},
 ];
 const REF_STUFEN = ['nicht erfüllt','ansatzweise erfüllt','teilweise erfüllt','überwiegend erfüllt','voll erfüllt'];
-const REF_MAX = REF_BEREICHE.reduce((a,b)=>a+b.k.length*4*b.faktor, 0);   // 80
+const REF_MAX = REF_BEREICHE.reduce((a,b)=>a+b.k.length*4*b.faktor, 0);   // 76
 const REF_SCHLUESSEL = C.SCHLUESSEL.mathe;   // 15 P. ab 95 %, … 1 P. ab 20 %
 const BUCHST = {a:'A', b:'B', c:'C'};
 
