@@ -785,9 +785,11 @@ function datenUebernehmen(neu){
 const zeitTxt = iso => iso ? new Date(iso).toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'}) : '–';
 
 /* ---- Datendatei (Chrome/Edge am Computer: direkt schreiben) ---- */
+let dateiNochmal=false;
 async function dateiSchreiben(erzwingen){
-  if(!dateiHandle || !dateiOk || dateiBeschaeftigt) return;
-  dateiBeschaeftigt=true;
+  if(!dateiHandle || !dateiOk) return;
+  if(dateiBeschaeftigt){ dateiNochmal=true; return; }  // läuft gerade → danach noch einmal speichern
+  dateiBeschaeftigt=true; dateiNochmal=false;
   try{
     if(!erzwingen){
       const ext=await leseDatenDatei(await (await dateiHandle.getFile()).text(), dateiHandle.name);
@@ -795,8 +797,11 @@ async function dateiSchreiben(erzwingen){
       const extStand = ext.daten && ext.daten.geaendert;
       if(extStand && D.dateiStand && extStand!==D.dateiStand){ dateiBeschaeftigt=false; await konflikt(ext.daten); return; }
     }
+    // Stand merken, BEVOR geschrieben wird: Änderungen während des Speicherns gehören nicht zu diesem Stand
+    const stand=D.geaendert;
     const text=await datenDateiText(); const w=await dateiHandle.createWritable(); await w.write(text); await w.close();
-    D.dateiStand=D.geaendert; D.letzteSicherung=new Date().toISOString(); await kvSet('daten', D);
+    D.dateiStand=stand; if(D.geaendert!==stand) dateiNochmal=true;
+    D.letzteSicherung=new Date().toISOString(); await kvSet('daten', D);
     setStatus(`✓ Gespeichert in ${dateiHandle.name}`); pruefeHinweis();
   }catch(e){
     dateiOk=false; setStatus('⚠ Datei nicht gespeichert');
@@ -804,6 +809,7 @@ async function dateiSchreiben(erzwingen){
     $('btnHinweisSichern').textContent='Erneut verbinden'; $('hinweisLeiste').classList.add('zeigen');
   }
   dateiBeschaeftigt=false;
+  if(dateiNochmal && dateiOk){ dateiNochmal=false; clearTimeout(dateiTimer); dateiTimer=setTimeout(()=>dateiSchreiben(), 300); }
 }
 async function konflikt(extDaten){
   const a=await dialog('Datei wurde woanders geändert',
