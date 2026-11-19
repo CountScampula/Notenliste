@@ -165,6 +165,7 @@ th .unter{display:block;font-weight:400;color:var(--muted);font-size:11px}
 .refNP b{font-size:30px;color:var(--accent)} .refNP.p0 b,.refNP.p13 b{color:inherit}
 .refFeedback{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .refFeedback textarea{min-height:110px;resize:vertical}
+.refFragen textarea{width:100%;min-height:110px;resize:vertical}
 .refHinweis{font-size:13px;border-radius:8px;padding:8px 10px;margin-top:10px}
 .refHinweis.ok{background:var(--ok-soft);color:var(--ok)} .refHinweis.warn{background:var(--warn-soft);color:var(--warn)}
 table.raster input.zelle.ref{background:#efe9f7;color:#4e2f86;font-weight:650}
@@ -1753,7 +1754,7 @@ $('refListe').addEventListener('click', e=>{
 });
 function refNeu(hj){
   const k=kurs();
-  const r={ id:uid(), erstellt:Date.now(), hj, sids:[], datum:heuteISO(), thema:'', soll:'', ist:'', w:{}, n:{}, staerken:'', entwicklung:'', anmerkungen:'', mdl:[] };
+  const r={ id:uid(), erstellt:Date.now(), hj, sids:[], datum:heuteISO(), thema:'', soll:'', ist:'', w:{}, n:{}, staerken:'', entwicklung:'', anmerkungen:'', fragen:'', mdl:[] };
   refs(k).push(r); A.refId=r.id; geaendert(); zeigeReferate();
   const s=document.querySelector('#refEditor select[data-rf="sid"]'); if(s) s.focus();
 }
@@ -1791,7 +1792,9 @@ function zeigeRefEditor(){
       <label class="feld">Stärken<textarea data-rf="staerken">${esc(r.staerken)}</textarea></label>
       <label class="feld">Entwicklungsfelder / Tipps<textarea data-rf="entwicklung">${esc(r.entwicklung)}</textarea></label>
       <label class="feld">Weitere Anmerkungen<textarea data-rf="anmerkungen">${esc(r.anmerkungen)}</textarea></label>
-    </div></div></div>
+    </div></div>
+    <div class="karte refFragen"><h3>Fragen während des Referats</h3>
+      <textarea data-rf="fragen" placeholder="Fragen aus der Klasse, Rückfragen der Lehrkraft, offene Punkte …">${esc(r.fragen||'')}</textarea></div></div>
     <div id="refSeite"></div></div>`;
   ed.innerHTML=h;
   zeigeRefSeite();
@@ -1834,7 +1837,7 @@ $('refEditor').addEventListener('input', e=>{
   const el=e.target, k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
   if(el.dataset.rn){ if(el.value) r.n[el.dataset.rn]=el.value; else delete r.n[el.dataset.rn]; geaendert(); return; }
   const f=el.dataset.rf;
-  if(['thema','soll','ist','staerken','entwicklung','anmerkungen'].includes(f)){ r[f]=el.value; geaendert(); if(f==='thema') zeigeRefListe(); }
+  if(['thema','soll','ist','staerken','entwicklung','anmerkungen','fragen'].includes(f)){ r[f]=el.value; geaendert(); if(f==='thema') zeigeRefListe(); }
 });
 $('refEditor').addEventListener('change', async e=>{
   const el=e.target, k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
@@ -1889,7 +1892,7 @@ async function refLoeschen(){
 }
 // Ausgefüllter (oder leerer) Bewertungsbogen zum Drucken, A4 hoch
 function refBogenHTML(k, r){
-  const leer=!r; r = r || {sids:[], mdl:[], w:{}, n:{}, hj:'', datum:'', thema:'', soll:'', ist:'', staerken:'', entwicklung:'', anmerkungen:''};
+  const leer=!r; r = r || {sids:[], mdl:[], w:{}, n:{}, hj:'', datum:'', thema:'', soll:'', ist:'', staerken:'', entwicklung:'', anmerkungen:'', fragen:''};
   const e=refErgebnis(r), namen=leer?[]:refMitglieder(k,r).map(s=>s.nn+', '+s.vn), gruppe=namen.length>1;
   const L='text-align:left;', TH='background:#e3efef;';
   const nl=t=>esc(t||'').replace(/\n/g,'<br>');
@@ -1917,6 +1920,8 @@ function refBogenHTML(k, r){
   }
   h+=`<h3 style="color:#1d5c63;margin:9pt 0 3pt;font-size:11pt">Rückmeldung</h3><table><tr><th style="${L}${TH}width:33%">Stärken</th><th style="${L}${TH}width:33%">Entwicklungsfelder / Tipps</th><th style="${L}${TH}">Weitere Anmerkungen</th></tr>
     <tr style="height:70pt;vertical-align:top"><td style="${L}">${nl(r.staerken)}</td><td style="${L}">${nl(r.entwicklung)}</td><td style="${L}">${nl(r.anmerkungen)}</td></tr>
+    <tr><th colspan="3" style="${L}${TH}">Fragen während des Referats</th></tr>
+    <tr style="height:${leer||!r.fragen?'60pt':'auto'};vertical-align:top"><td colspan="3" style="${L}">${nl(r.fragen)}</td></tr>
     <tr><td colspan="3" style="${L}height:26pt;vertical-align:bottom"><b>Datum, Unterschrift Lehrkraft:</b></td></tr></table></div>`;
   return h;
 }
