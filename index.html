@@ -165,6 +165,11 @@ th .unter{display:block;font-weight:400;color:var(--muted);font-size:11px}
 .refNP b{font-size:30px;color:var(--accent)} .refNP.p0 b,.refNP.p13 b{color:inherit}
 .refFeedback{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .refFeedback textarea{min-height:110px;resize:vertical}
+.kritGruppe{grid-template-columns:1fr;padding-bottom:2px}
+.kritPerson{border-top:none;padding:3px 0}
+.kritPerson .person{padding-left:16px;font-size:14px;font-weight:600;color:var(--accent)}
+.einzelSchalter{display:flex;align-items:center;gap:8px;font-size:14px;margin:-2px 0 10px;cursor:pointer}
+.einzelSchalter input{width:18px;height:18px}
 .refFragen textarea{width:100%;min-height:110px;resize:vertical}
 .refHinweis{font-size:13px;border-radius:8px;padding:8px 10px;margin-top:10px}
 .refHinweis.ok{background:var(--ok-soft);color:var(--ok)} .refHinweis.warn{background:var(--warn-soft);color:var(--warn)}
@@ -1665,11 +1670,16 @@ function refNorm(r){
   return r;
 }
 function refs(k){ k.referate = k.referate || []; k.referate.forEach(refNorm); return k.referate; }
-function refErgebnis(r){
+// Gruppenreferat mit Einzelwertung: Bereich C (Vortrag) wird je Person in r.v[sid] bewertet
+const REF_EINZEL='c';
+function refEinzel(r){ return !!r.einzelVortrag && r.sids.length>1; }
+function refV(r,sid){ r.v=r.v||{}; return (r.v[sid]=r.v[sid]||{w:{}, n:{}}); }
+function refErgebnis(r,sid){
   let gesamt=0, offen=0; const ber={};
+  const vw = refEinzel(r) && sid ? refV(r,sid).w : null;
   REF_BEREICHE.forEach(b=>{
     let roh=0;
-    b.k.forEach((_,i)=>{ const v=r.w[b.id+i]; if(C.istZahl(v)) roh+=v; else offen++; });
+    b.k.forEach((_,i)=>{ const v=(vw && b.id===REF_EINZEL ? vw : r.w)[b.id+i]; if(C.istZahl(v)) roh+=v; else offen++; });
     ber[b.id]={ roh, max:b.k.length*4, gew:roh*b.faktor, gmax:b.k.length*4*b.faktor };
     gesamt+=roh*b.faktor;
   });
@@ -1689,27 +1699,28 @@ function mdlSetzen(k,sid,h,i,v){
 }
 // trägt die Note für alle (oder nur einen) Beteiligten ein, die noch keine verknüpfte Note haben
 function refEintragen(k,r,nur){
-  const e=refErgebnis(r); if(e.np==null) return 0;
   let n=0;
   (nur?[nur]:r.sids).forEach(sid=>{
     if(!r.sids.includes(sid) || r.mdl.some(x=>x.sid===sid)) return;
+    const np=refErgebnis(r,sid).np; if(np==null) return;
     const m=(k.mdl[sid] && k.mdl[sid][r.hj]) || [];
     let i=0; while(m[i]!=null) i++;
-    mdlSetzen(k, sid, r.hj, i, e.np);
-    r.mdl.push({ sid, h:r.hj, i, wert:e.np }); n++;
+    mdlSetzen(k, sid, r.hj, i, np);
+    r.mdl.push({ sid, h:r.hj, i, wert:np }); n++;
   });
   return n;
 }
 // nach jeder Änderung: eingetragene Noten aktuell halten
 function refAbgleich(k,r){
   if(!r.mdl.length) return;
-  const e=refErgebnis(r); let geloest=0, verschoben=0, entfernt=0;
+  let geloest=0, verschoben=0, entfernt=0;
   r.mdl.slice().forEach(m=>{
     const ist=mdlWert(k,m.sid,m.h,m.i), weg=()=>{ r.mdl=r.mdl.filter(x=>x!==m); };
     if(ist!=null && ist!==m.wert){ weg(); geloest++; return; }
     if(!r.sids.includes(m.sid)){ mdlSetzen(k,m.sid,m.h,m.i,null); weg(); entfernt++; return; }
     if(m.h!==r.hj){ mdlSetzen(k,m.sid,m.h,m.i,null); weg(); if(refEintragen(k,r,m.sid)) verschoben++; return; }
-    if(e.np!=null){ mdlSetzen(k,m.sid,m.h,m.i,e.np); m.wert=e.np; }
+    const np=refErgebnis(r,m.sid).np;
+    if(np!=null){ mdlSetzen(k,m.sid,m.h,m.i,np); m.wert=np; }
   });
   if(geloest) toast('Eine Note wurde in der Übersicht von Hand geändert – die Verknüpfung ist gelöst.');
   else if(verschoben) toast(`Mündliche Note${verschoben>1?'n':''} ins ${r.hj}. Halbjahr verschoben.`);
@@ -1740,8 +1751,10 @@ function zeigeRefListe(){
     const l=refSortiert(k,hj), mit=new Set(l.flatMap(r=>r.sids)).size;
     h+=`<h4>${hj}. Halbjahr <span>${mit} von ${anz}</span></h4>`;
     l.forEach(r=>{
-      const e=refErgebnis(r);
-      h+=`<div class="nw${r.id===A.refId?' aktiv':''}" data-ref="${r.id}"><span><span class="t">${r.sids.length>1?'👥 ':''}${esc(refName(k,r))}</span><br><span class="s">${esc(r.thema||'ohne Thema')}${r.datum?' · '+datumText(r.datum):''}</span></span><span class="np ${notenKlasse(e.np)}" title="${e.np==null?e.offen+' Kriterien offen':'Notenpunkte'}">${e.np==null?'<span class="s">offen</span>':e.np}</span></div>`;
+      const nps=refEinzel(r) ? r.sids.map(sid=>refErgebnis(r,sid).np) : [refErgebnis(r).np];
+      const fertig=nps.every(x=>x!=null), e={ np: fertig ? Math.min(...nps) : null, offen: refErgebnis(r, refEinzel(r)?r.sids.find((_,i)=>nps[i]==null):null).offen };
+      const npText=fertig ? [...new Set(nps)].join('/') : null;
+      h+=`<div class="nw${r.id===A.refId?' aktiv':''}" data-ref="${r.id}"><span><span class="t">${r.sids.length>1?'👥 ':''}${esc(refName(k,r))}</span><br><span class="s">${esc(r.thema||'ohne Thema')}${r.datum?' · '+datumText(r.datum):''}</span></span><span class="np ${notenKlasse(e.np)}" title="${e.np==null?e.offen+' Kriterien offen':'Notenpunkte'}">${e.np==null?'<span class="s">offen</span>':npText}</span></div>`;
     });
     h+=`<div class="neu"><button class="klein" data-refneu="${hj}">+ Referat</button></div>`;
   });
@@ -1778,10 +1791,20 @@ function zeigeRefEditor(){
     </div></div>
   <div id="refInhalt"><div>`;
   REF_BEREICHE.forEach(b=>{
+    const einzeln = b.id===REF_EINZEL && refEinzel(r);
     h+=`<div class="karte"><h3>${BUCHST[b.id]} – ${b.name} <span class="muted" style="font-weight:400">(${b.faktor===2?'doppelt':'einfach'} gewichtet)</span></h3>
+      ${b.id===REF_EINZEL && gruppe ? `<label class="einzelSchalter"><input type="checkbox" data-rf="einzel"${einzeln?' checked':''}> Vortrag für jede Person einzeln bewerten</label>` : ''}
       <div class="kritKopf"><span>Kriterium</span><span class="sk">${[4,3,2,1,0].map(p=>`<span title="${REF_STUFEN[p]}">${p}</span>`).join('')}</span><span>Notizen</span></div>`;
     b.k.forEach(([t,d],i)=>{
       const key=b.id+i, v=r.w[key];
+      if(einzeln){
+        h+=`<div class="krit kritGruppe"><div><div class="t">${esc(t)}</div><div class="d">${esc(d)}</div></div></div>`;
+        mitgl.forEach(s=>{ const vv=refV(r,s.id), pv=vv.w[key];
+          h+=`<div class="krit kritPerson"><div class="person">${esc(s.vn)} ${esc(s.nn)}</div>
+            <div class="stufen" data-krit="${key}" data-sid="${esc(s.id)}">${[4,3,2,1,0].map(p=>`<button type="button" data-stufe="${p}" class="${pv===p?'an':''}" title="${p} – ${REF_STUFEN[p]}">${p}</button>`).join('')}</div>
+            <textarea data-rn="${key}" data-sid="${esc(s.id)}" rows="1" placeholder="Notiz …">${esc(vv.n[key]||'')}</textarea></div>`; });
+        return;
+      }
       h+=`<div class="krit"><div><div class="t">${esc(t)}</div><div class="d">${esc(d)}</div></div>
         <div class="stufen" data-krit="${key}">${[4,3,2,1,0].map(p=>`<button type="button" data-stufe="${p}" class="${v===p?'an':''}" title="${p} – ${REF_STUFEN[p]}">${p}</button>`).join('')}</div>
         <textarea data-rn="${key}" rows="1" placeholder="Notiz …">${esc(r.n[key]||'')}</textarea></div>`;
@@ -1801,21 +1824,33 @@ function zeigeRefEditor(){
 }
 function zeigeRefSeite(){
   const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
-  const e=refErgebnis(r);
-  REF_BEREICHE.forEach(b=>{ const el=document.querySelector(`#refEditor [data-rsum="${b.id}"]`); const x=e.ber[b.id];
-    if(el) el.textContent = b.faktor===1 ? `Summe: ${x.roh} / ${x.max} Punkte` : `Summe: ${x.roh} / ${x.max} × ${b.faktor} = ${x.gew} / ${x.gmax} Punkte`; });
-  let h=`<div class="karte" style="padding:14px 16px"><h3>Auswertung</h3><table class="refAusw"><thead><tr><th>Bereich</th><th class="r">Roh</th><th class="r">×</th><th class="r">Punkte</th></tr></thead><tbody>`;
+  const e=refErgebnis(r), einzel=refEinzel(r), mitgl=refMitglieder(k,r), ep=mitgl.map(s=>({s, e:refErgebnis(r,s.id)}));
+  const sumText=(b,x)=> b.faktor===1 ? `${x.roh} / ${x.max} Punkte` : `${x.roh} / ${x.max} × ${b.faktor} = ${x.gew} / ${x.gmax} Punkte`;
+  REF_BEREICHE.forEach(b=>{ const el=document.querySelector(`#refEditor [data-rsum="${b.id}"]`); if(!el) return;
+    if(einzel && b.id===REF_EINZEL){ el.innerHTML=ep.map(o=>`<span>${esc(o.s.vn)}: ${sumText(b,o.e.ber[b.id])}</span>`).join('<span class="muted">·</span>'); el.style.flexWrap='wrap'; }
+    else el.textContent='Summe: '+sumText(b,e.ber[b.id]); });
+  let h='';
+  if(einzel){
+    h=`<div class="karte" style="padding:14px 16px"><h3>Auswertung</h3><table class="refAusw"><thead><tr><th>Bereich</th>${ep.map(o=>`<th class="r">${esc(o.s.vn)}</th>`).join('')}</tr></thead><tbody>`;
+    REF_BEREICHE.forEach(b=>{ h+=`<tr><td>${BUCHST[b.id]} – ${b.name}${b.faktor!==1?' (×'+b.faktor+')':''}</td>${ep.map(o=>`<td class="r">${o.e.ber[b.id].gew}/${o.e.ber[b.id].gmax}</td>`).join('')}</tr>`; });
+    h+=`<tr class="summe"><td>Gesamt</td>${ep.map(o=>`<td class="r">${o.e.gesamt}/${REF_MAX}</td>`).join('')}</tr></tbody></table>`;
+    ep.forEach(o=>{ h+=`<div class="refNP ${notenKlasse(o.e.np)}" style="margin:8px 0"><span>${esc(o.s.vn)} ${esc(o.s.nn)}</span><b>${o.e.np==null?'–':o.e.np}</b></div>`; });
+    const off=Math.max(0,...ep.map(o=>o.e.offen));
+    if(off) h+=`<p class="klein" style="margin:0">Noch nicht alle Kriterien bewertet.</p>`;
+  } else {
+  h=`<div class="karte" style="padding:14px 16px"><h3>Auswertung</h3><table class="refAusw"><thead><tr><th>Bereich</th><th class="r">Roh</th><th class="r">×</th><th class="r">Punkte</th></tr></thead><tbody>`;
   REF_BEREICHE.forEach(b=>{ const x=e.ber[b.id]; h+=`<tr><td>${BUCHST[b.id]} – ${b.name}</td><td class="r">${x.roh}/${x.max}</td><td class="r">${b.faktor}</td><td class="r">${x.gew}/${x.gmax}</td></tr>`; });
   h+=`<tr class="summe"><td>Gesamt</td><td></td><td></td><td class="r">${e.gesamt}/${REF_MAX}</td></tr></tbody></table>
     <div class="refNP ${notenKlasse(e.np)}"><span>Notenpunkte</span><b>${e.np==null?'–':e.np}</b></div>`;
   if(e.offen) h+=`<p class="klein" style="margin:0">Noch ${e.offen} ${e.offen===1?'Kriterium':'Kriterien'} ohne Bewertung.</p>`;
+  }
   if(r.mdl.length){
     const zeile=m=>{ const s=refSchueler(k,m.sid), ist=mdlWert(k,m.sid,m.h,m.i); return `${esc(s?s.nn+', '+s.vn:'?')}: ${m.h}. HJ, mdl ${m.i+1} (${ist==null?'–':ist} P.)`; };
     h+=`<div class="refHinweis ok">✓ Als mündliche Note eingetragen${r.mdl.length>1?':<br>'+r.mdl.map(zeile).join('<br>'):': '+zeile(r.mdl[0])}<br>Änderungen am Bogen werden automatisch übernommen.</div>`;
   }
   const offen=refMitglieder(k,r).filter(s=>!r.mdl.some(x=>x.sid===s.id));
   if(offen.length || !r.sids.length){
-    const bereit = e.np!=null && offen.length>0;
+    const bereit = offen.some(s=>refErgebnis(r,s.id).np!=null);
     const txt = r.mdl.length ? `Auch für ${offen.map(s=>s.nn).join(', ')} eintragen` : (offen.length>1 ? `Für alle ${offen.length} als mündliche Note eintragen` : 'Als mündliche Note eintragen');
     h+=`<button class="primary" data-aktion="refEintragen" style="width:100%;margin-top:10px" ${bereit?'':'disabled'}>${esc(txt)}</button>`;
     if(!r.sids.length) h+=`<p class="klein" style="margin:6px 0 0">Zuerst oben den Schüler bzw. die Gruppe wählen.</p>`;
@@ -1829,13 +1864,13 @@ $('refEditor').addEventListener('click', e=>{
   const b=e.target.closest('button[data-stufe]'); if(!b) return;
   const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
   const box=b.closest('[data-krit]'), key=box.dataset.krit, v=+b.dataset.stufe;
-  r.w[key]=v;
+  if(box.dataset.sid) refV(r,box.dataset.sid).w[key]=v; else r.w[key]=v;
   box.querySelectorAll('button').forEach(x=>x.classList.toggle('an', x===b));
   refAktualisiert(k,r);
 });
 $('refEditor').addEventListener('input', e=>{
   const el=e.target, k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
-  if(el.dataset.rn){ if(el.value) r.n[el.dataset.rn]=el.value; else delete r.n[el.dataset.rn]; geaendert(); return; }
+  if(el.dataset.rn){ const ziel=el.dataset.sid ? refV(r,el.dataset.sid).n : r.n; if(el.value) ziel[el.dataset.rn]=el.value; else delete ziel[el.dataset.rn]; geaendert(); return; }
   const f=el.dataset.rf;
   if(['thema','soll','ist','staerken','entwicklung','anmerkungen','fragen'].includes(f)){ r[f]=el.value; geaendert(); if(f==='thema') zeigeRefListe(); }
 });
@@ -1843,6 +1878,14 @@ $('refEditor').addEventListener('change', async e=>{
   const el=e.target, k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
   const f=el.dataset.rf;
   if(f==='datum'){ r.datum=el.value; geaendert(); zeigeRefListe(); return; }
+  if(f==='einzel'){
+    r.einzelVortrag=el.checked;
+    // Startwerte: bisherige gemeinsame Vortragsbewertung übernehmen
+    if(el.checked) r.sids.forEach(sid=>{ const vv=refV(r,sid); REF_BEREICHE.find(b=>b.id===REF_EINZEL).k.forEach((_,i)=>{ const key=REF_EINZEL+i; if(vv.w[key]==null && r.w[key]!=null) vv.w[key]=r.w[key]; }); });
+    refAktualisiert(k,r); zeigeRefEditor();
+    toast(el.checked ? 'Vortrag wird jetzt für jede Person einzeln bewertet.' : 'Vortrag wird wieder gemeinsam bewertet.');
+    return;
+  }
   if(f==='sid'){
     const neu=el.value; if(!neu || r.sids.includes(neu)) return;
     const doppelt=refs(k).find(x=>x!==r && x.sids.includes(neu) && x.hj===r.hj), s=refSchueler(k,neu);
@@ -1874,14 +1917,18 @@ async function refMitgliedWeg(sid){
   const verkn = m && mdlWert(k,m.sid,m.h,m.i)===m.wert;
   if(verkn && !(await frage('Aus dem Referat entfernen?', `${s?s.nn+', '+s.vn:'Der Schüler'} wird aus dem Referat entfernt. Die eingetragene mündliche Note (${m.wert} Punkte, ${m.h}. HJ, mdl ${m.i+1}) wird dabei wieder gelöscht.`, 'Entfernen', 'Abbrechen', true))) return;
   r.sids=r.sids.filter(x=>x!==sid);
+  // nur noch eine Person: deren Vortragsbewertung wird zur normalen Bewertung
+  if(r.einzelVortrag && r.sids.length===1){ const vv=refV(r,r.sids[0]); Object.assign(r.w, vv.w); Object.assign(r.n, vv.n); r.einzelVortrag=false; }
   refAktualisiert(k,r); zeigeRefEditor();
 }
 async function refEintragenKlick(){
   const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
   const n=refEintragen(k,r); if(!n) return;
   geaendert(); zeigeRefSeite(); zeigeRefListe();
-  const np=refErgebnis(r).np, m=r.mdl[r.mdl.length-1];
-  toast(n===1 ? `${refSchueler(k,m.sid).nn}: ${np} Punkte als mündliche Note (${r.hj}. HJ, mdl ${m.i+1}) eingetragen.` : `${np} Punkte bei ${n} Schülern als mündliche Note (${r.hj}. HJ) eingetragen.`);
+  const neu=r.mdl.slice(-n), m=neu[0];
+  toast(n===1 ? `${refSchueler(k,m.sid).nn}: ${m.wert} Punkte als mündliche Note (${r.hj}. HJ, mdl ${m.i+1}) eingetragen.`
+    : (new Set(neu.map(x=>x.wert)).size===1 ? `${m.wert} Punkte bei ${n} Schülern als mündliche Note (${r.hj}. HJ) eingetragen.`
+      : `Mündliche Noten (${r.hj}. HJ) eingetragen: ${neu.map(x=>refSchueler(k,x.sid).nn+' '+x.wert).join(', ')}.`));
 }
 async function refLoeschen(){
   const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
@@ -1893,23 +1940,35 @@ async function refLoeschen(){
 // Ausgefüllter (oder leerer) Bewertungsbogen zum Drucken, A4 hoch
 function refBogenHTML(k, r){
   const leer=!r; r = r || {sids:[], mdl:[], w:{}, n:{}, hj:'', datum:'', thema:'', soll:'', ist:'', staerken:'', entwicklung:'', anmerkungen:'', fragen:''};
-  const e=refErgebnis(r), namen=leer?[]:refMitglieder(k,r).map(s=>s.nn+', '+s.vn), gruppe=namen.length>1;
+  const e=refErgebnis(r), mitgl=leer?[]:refMitglieder(k,r), namen=mitgl.map(s=>s.nn+', '+s.vn), gruppe=namen.length>1, einzel=!leer && refEinzel(r);
+  const ep=mitgl.map(s=>({s, e:refErgebnis(r,s.id)}));
   const L='text-align:left;', TH='background:#e3efef;';
   const nl=t=>esc(t||'').replace(/\n/g,'<br>');
   let h=`<div style="font-size:9.5pt"><h1 style="color:#1d5c63;margin:0">Bewertungsbogen ${gruppe?'Gruppenreferat':'Referat'}</h1>
     <div class="sub">${esc(k.fach)} · Klasse ${esc(k.klasse)}${k.schuljahr?' · Schuljahr '+esc(k.schuljahr):''}</div>
-    <table><tr><th style="${L}width:16%">${gruppe?'Gruppe':'Name'}</th><td style="${L}width:34%">${namen.map(esc).join('<br>')}${gruppe?'<br><span style="font-size:8pt;color:#555">Gemeinsame Bewertung – gleiche Note für alle</span>':''}</td><th style="${L}width:16%">Datum</th><td style="${L}">${datumText(r.datum)}</td></tr>
+    <table><tr><th style="${L}width:16%">${gruppe?'Gruppe':'Name'}</th><td style="${L}width:34%">${namen.map(esc).join('<br>')}${gruppe?`<br><span style="font-size:8pt;color:#555">${einzel?'Inhalt und Darstellung gemeinsam, Vortrag einzeln bewertet':'Gemeinsame Bewertung – gleiche Note für alle'}</span>`:''}</td><th style="${L}width:16%">Datum</th><td style="${L}">${datumText(r.datum)}</td></tr>
     <tr><th style="${L}">Thema</th><td style="${L}" colspan="3">${esc(r.thema)}</td></tr>
     <tr><th style="${L}">Dauer</th><td style="${L}">Soll: ${esc(r.soll)||'____'} Min. &nbsp; Ist: ${esc(r.ist)||'____'} Min.</td><th style="${L}">Lehrkraft</th><td style="${L}">${esc(k.lehrkraft||D.lehrkraft||'')}</td></tr></table>
     <p style="margin:5pt 0">Pro Kriterium 0–4 Punkte (4 voll erfüllt · 3 überwiegend · 2 teilweise · 1 ansatzweise · 0 nicht erfüllt). Inhalt ×1, Darstellung ×1, Vortrag ×2; max. ${REF_MAX} Punkte.</p>`;
-  REF_BEREICHE.forEach(b=>{
-    const x=e.ber[b.id];
-    h+=`<h3 style="color:#1d5c63;margin:9pt 0 3pt;font-size:11pt">${BUCHST[b.id]} – ${b.name} (${b.faktor===2?'doppelt':'einfach'} gewichtet)</h3>
+  const bereichTab=(b, w, notiz, x, wer)=>{
+    let h=`<h3 style="color:#1d5c63;margin:9pt 0 3pt;font-size:11pt">${BUCHST[b.id]} – ${b.name} (${b.faktor===2?'doppelt':'einfach'} gewichtet)${wer?': '+esc(wer):''}</h3>
       <table><thead><tr><th style="${L}${TH}width:36%">Kriterium</th>${[4,3,2,1,0].map(p=>`<th style="${TH}width:4.5%">${p}</th>`).join('')}<th style="${L}${TH}">Notizen</th></tr></thead><tbody>`;
-    b.k.forEach(([t,d],i)=>{ const key=b.id+i, v=r.w[key];
-      h+=`<tr style="height:${leer?'26pt':'auto'}"><td style="${L}"><b>${esc(t)}</b><br><span style="font-size:8pt;color:#555">${esc(d)}</span></td>${[4,3,2,1,0].map(p=>`<td style="font-size:12pt">${v===p?'☒':'☐'}</td>`).join('')}<td style="${L}font-size:8.5pt">${nl(r.n[key])}</td></tr>`; });
+    b.k.forEach(([t,d],i)=>{ const key=b.id+i, v=w[key];
+      h+=`<tr style="height:${leer?'26pt':'auto'}"><td style="${L}"><b>${esc(t)}</b><br><span style="font-size:8pt;color:#555">${esc(d)}</span></td>${[4,3,2,1,0].map(p=>`<td style="font-size:12pt">${v===p?'☒':'☐'}</td>`).join('')}<td style="${L}font-size:8.5pt">${nl(notiz[key])}</td></tr>`; });
     h+=`<tr><td style="${L}"><b>Summe</b></td><td colspan="6" style="text-align:right"><b>${leer?'____':x.roh} / ${x.max}${b.faktor!==1?` × ${b.faktor} = ${leer?'____':x.gew} / ${x.gmax}`:''} Punkte</b></td></tr></tbody></table>`;
+    return h;
+  };
+  REF_BEREICHE.forEach(b=>{
+    if(einzel && b.id===REF_EINZEL) ep.forEach(o=>{ const vv=refV(r,o.s.id); h+=bereichTab(b, vv.w, vv.n, o.e.ber[b.id], o.s.vn+' '+o.s.nn); });
+    else h+=bereichTab(b, r.w, r.n, e.ber[b.id]);
   });
+  if(einzel){
+    const Y='background:#fff2cc;';
+    h+=`<h3 style="color:#1d5c63;margin:9pt 0 3pt;font-size:11pt">Auswertung</h3><table style="width:auto;min-width:60%"><tr><th style="${L}${TH}">Bereich</th><th style="${TH}">Faktor</th>${ep.map(o=>`<th style="${TH}">${esc(o.s.vn+' '+o.s.nn)}</th>`).join('')}</tr>
+      ${REF_BEREICHE.map(b=>`<tr><td style="${L}">${BUCHST[b.id]} – ${b.name}</td><td>× ${b.faktor}</td>${ep.map(o=>`<td>${o.e.ber[b.id].gew} / ${o.e.ber[b.id].gmax}</td>`).join('')}</tr>`).join('')}
+      <tr><td style="${L}"><b>Gesamt</b></td><td></td>${ep.map(o=>`<td><b>${o.e.gesamt} / ${REF_MAX}</b></td>`).join('')}</tr>
+      <tr><td style="${L}${Y}"><b>Notenpunkte</b></td><td style="${Y}"></td>${ep.map(o=>`<td style="${Y}font-size:12pt"><b>${o.e.np==null?'____':o.e.np}</b></td>`).join('')}</tr></table>`;
+  } else
   h+=`<h3 style="color:#1d5c63;margin:9pt 0 3pt;font-size:11pt">Auswertung</h3><table style="width:auto;min-width:60%"><tr><th style="${L}${TH}">Bereich</th><th style="${TH}">Rohpunkte</th><th style="${TH}">Faktor</th><th style="${TH}">Punkte</th></tr>
     ${REF_BEREICHE.map(b=>{ const x=e.ber[b.id]; return `<tr><td style="${L}">${BUCHST[b.id]} – ${b.name}</td><td>${leer?'____':x.roh} / ${x.max}</td><td>× ${b.faktor}</td><td>${leer?'____':x.gew} / ${x.gmax}</td></tr>`; }).join('')}
     <tr><td style="${L}"><b>Gesamt</b></td><td></td><td></td><td><b>${leer?'____':e.gesamt} / ${REF_MAX}</b></td></tr>
