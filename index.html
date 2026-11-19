@@ -140,6 +140,12 @@ th .unter{display:block;font-weight:400;color:var(--muted);font-size:11px}
 #refListe .neu{display:flex;flex-wrap:wrap;gap:6px;padding:4px 6px 8px}
 #refEditor .kopf{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
 #refEditor .kopf .breit{grid-column:span 2}
+#refEditor .kopf .gruppe{grid-column:1/-1}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:2px;background:var(--accent-soft);color:var(--ink);border-radius:999px;padding:3px 3px 3px 11px;font-size:14px;font-weight:500}
+.chip button{border:0;background:transparent;font-size:17px;line-height:1;padding:2px 7px;border-radius:999px;color:var(--muted)}
+.chip button:hover{background:rgba(0,0,0,.08);color:var(--ink)}
+.chips select{width:auto;min-width:230px;flex:0 1 auto}
 #refInhalt{display:grid;grid-template-columns:1fr 290px;gap:16px;align-items:start}
 #refSeite{position:sticky;top:70px}
 .krit{display:grid;grid-template-columns:minmax(170px,1.2fr) auto minmax(150px,1fr);gap:12px;align-items:center;padding:9px 0;border-top:1px solid var(--line2)}
@@ -1119,7 +1125,7 @@ function zeigeUebersicht(){
       const nwZelle=(n)=>{ const p=C.ergebnis(rechenNw(n), s.id).punkte; add(n.id,p); return `<td class="wert ${notenKlasse(p)}">${p==null?'':p}</td>`; };
       z+=S.sa.map(nwZelle).join('')+S.kln.map(nwZelle).join('');
       const m=(k.mdl[s.id]&&k.mdl[s.id][hNr])||[];
-      for(let x=0;x<anzM;x++){ const v=m[x]; add(`m${hNr}_${x}`, v); const rf=refSlot.get(`${s.id}|${hNr}|${x}`); z+=`<td><input class="zelle${rf?' ref':''}" data-mdl="${s.id}" data-h="${hNr}" data-i="${x}" inputmode="numeric" value="${v==null?'':v}"${rf?` title="${esc('Referat: '+(rf.thema||'ohne Thema')+(rf.datum?' ('+datumText(rf.datum)+')':''))}"`:''}></td>`; }
+      for(let x=0;x<anzM;x++){ const v=m[x]; add(`m${hNr}_${x}`, v); const rf=refSlot.get(`${s.id}|${hNr}|${x}`); z+=`<td><input class="zelle${rf?' ref':''}" data-mdl="${s.id}" data-h="${hNr}" data-i="${x}" inputmode="numeric" value="${v==null?'':v}"${rf?` title="${esc((rf.r.sids.length>1?'Gruppenreferat: ':'Referat: ')+(rf.r.thema||'ohne Thema')+(rf.r.datum?' ('+datumText(rf.r.datum)+')':''))}"`:''}></td>`; }
       z+=S.ep.map(nwZelle).join('');
       add(`kl${hNr}`, r.schnittKlein); add(`s${hNr}`, r.schnitt); add(`n${hNr}`, r.note);
       z+=`<td class="calc">${fmt(r.schnittKlein,2)}</td><td class="calc">${fmt(r.schnitt,2)}</td><td class="calc note ${notenKlasse(r.note)}">${r.note==null?'':r.note}</td>`;
@@ -1153,7 +1159,7 @@ $('tabUebersicht').addEventListener('change', e=>{
   k.mdl[sid]=k.mdl[sid]||{1:[],2:[]}; k.mdl[sid][h]=k.mdl[sid][h]||[];
   k.mdl[sid][h][i]= v==null?null:v;
   const rf=refSlots(k).get(`${sid}|${h}|${i}`);
-  if(rf && rf.mdl.wert!==(v==null?null:v)){ rf.mdl=null; toast('Diese Note stammte aus einem Referat. Die Verknüpfung mit dem Bewertungsbogen ist jetzt gelöst.'); }
+  if(rf && rf.m.wert!==(v==null?null:v)){ rf.r.mdl=rf.r.mdl.filter(x=>x!==rf.m); toast('Diese Note stammte aus einem Referat. Die Verknüpfung mit dem Bewertungsbogen ist jetzt gelöst.'); }
   geaendert();
   setTimeout(()=>neuMitFokus(zeigeUebersicht),0);
 });
@@ -1649,7 +1655,15 @@ const REF_MAX = REF_BEREICHE.reduce((a,b)=>a+b.k.length*4*b.faktor, 0);   // 76
 const REF_SCHLUESSEL = C.SCHLUESSEL.mathe;   // 15 P. ab 95 %, … 1 P. ab 20 %
 const BUCHST = {a:'A', b:'B', c:'C'};
 
-function refs(k){ return (k.referate = k.referate || []); }
+// Referat: sids = beteiligte Schüler (Gruppenreferat: alle bekommen dieselbe Note),
+// mdl = Liste der eingetragenen mündlichen Noten {sid, h, i, wert}
+function refNorm(r){
+  if(!Array.isArray(r.sids)) r.sids = r.sid ? [r.sid] : [];
+  if('sid' in r) delete r.sid;
+  if(!Array.isArray(r.mdl)) r.mdl = r.mdl ? [r.mdl] : [];
+  return r;
+}
+function refs(k){ k.referate = k.referate || []; k.referate.forEach(refNorm); return k.referate; }
 function refErgebnis(r){
   let gesamt=0, offen=0; const ber={};
   REF_BEREICHE.forEach(b=>{
@@ -1663,7 +1677,7 @@ function refErgebnis(r){
 // Map "sid|hj|index" → Referat, dessen Note dort als mündliche Note steht
 function refSlots(k){
   const m=new Map();
-  refs(k).forEach(r=>{ if(r.mdl) m.set(`${r.mdl.sid}|${r.mdl.h}|${r.mdl.i}`, r); });
+  refs(k).forEach(r=>r.mdl.forEach(x=>m.set(`${x.sid}|${x.h}|${x.i}`, {r, m:x})));
   return m;
 }
 function mdlWert(k,sid,h,i){ return k.mdl[sid] && k.mdl[sid][h] ? k.mdl[sid][h][i] : undefined; }
@@ -1672,30 +1686,42 @@ function mdlSetzen(k,sid,h,i,v){
   k.mdl[sid][h][i]=v;
   if(v!=null && i+1>(k.anzMdl||3)) k.anzMdl=i+1;   // weitere Spalte für mündliche Noten
 }
-function refEintragen(k,r){
-  const e=refErgebnis(r); if(e.np==null || !r.sid) return false;
-  const m=(k.mdl[r.sid] && k.mdl[r.sid][r.hj]) || [];
-  let i=0; while(m[i]!=null) i++;
-  mdlSetzen(k, r.sid, r.hj, i, e.np);
-  r.mdl={ sid:r.sid, h:r.hj, i, wert:e.np };
-  return true;
+// trägt die Note für alle (oder nur einen) Beteiligten ein, die noch keine verknüpfte Note haben
+function refEintragen(k,r,nur){
+  const e=refErgebnis(r); if(e.np==null) return 0;
+  let n=0;
+  (nur?[nur]:r.sids).forEach(sid=>{
+    if(!r.sids.includes(sid) || r.mdl.some(x=>x.sid===sid)) return;
+    const m=(k.mdl[sid] && k.mdl[sid][r.hj]) || [];
+    let i=0; while(m[i]!=null) i++;
+    mdlSetzen(k, sid, r.hj, i, e.np);
+    r.mdl.push({ sid, h:r.hj, i, wert:e.np }); n++;
+  });
+  return n;
 }
-// nach jeder Änderung: eingetragene Note aktuell halten
+// nach jeder Änderung: eingetragene Noten aktuell halten
 function refAbgleich(k,r){
-  if(!r.mdl) return;
-  const m=r.mdl, ist=mdlWert(k,m.sid,m.h,m.i);
-  if(ist!=null && ist!==m.wert){ r.mdl=null; toast('Die Note wurde in der Übersicht von Hand geändert – die Verknüpfung ist gelöst.'); return; }
-  if(m.sid!==r.sid || m.h!==r.hj){
-    mdlSetzen(k,m.sid,m.h,m.i,null); r.mdl=null;
-    if(refEintragen(k,r)) toast(`Mündliche Note verschoben: ${r.hj}. Halbjahr, mdl ${r.mdl.i+1}.`);
-    return;
-  }
-  const e=refErgebnis(r);
-  if(e.np==null) return;
-  mdlSetzen(k,m.sid,m.h,m.i,e.np); m.wert=e.np;
+  if(!r.mdl.length) return;
+  const e=refErgebnis(r); let geloest=0, verschoben=0, entfernt=0;
+  r.mdl.slice().forEach(m=>{
+    const ist=mdlWert(k,m.sid,m.h,m.i), weg=()=>{ r.mdl=r.mdl.filter(x=>x!==m); };
+    if(ist!=null && ist!==m.wert){ weg(); geloest++; return; }
+    if(!r.sids.includes(m.sid)){ mdlSetzen(k,m.sid,m.h,m.i,null); weg(); entfernt++; return; }
+    if(m.h!==r.hj){ mdlSetzen(k,m.sid,m.h,m.i,null); weg(); if(refEintragen(k,r,m.sid)) verschoben++; return; }
+    if(e.np!=null){ mdlSetzen(k,m.sid,m.h,m.i,e.np); m.wert=e.np; }
+  });
+  if(geloest) toast('Eine Note wurde in der Übersicht von Hand geändert – die Verknüpfung ist gelöst.');
+  else if(verschoben) toast(`Mündliche Note${verschoben>1?'n':''} ins ${r.hj}. Halbjahr verschoben.`);
+  else if(entfernt) toast('Die mündliche Note des entfernten Schülers wurde wieder gelöscht.');
 }
 function refSchueler(k,sid){ return k.schueler.find(s=>s.id===sid) || null; }
-function refName(k,r){ const s=refSchueler(k,r.sid); return s ? `${s.nn}, ${s.vn}` : 'Schüler wählen …'; }
+function refMitglieder(k,r){ return r.sids.map(id=>refSchueler(k,id)).filter(Boolean); }
+function refName(k,r){
+  const l=refMitglieder(k,r);
+  if(!l.length) return 'Schüler wählen …';
+  if(l.length===1) return `${l[0].nn}, ${l[0].vn}`;
+  return l.map(s=>l.filter(x=>x.nn===s.nn).length>1 ? `${s.nn} ${s.vn.charAt(0)}.` : s.nn).join(', ');
+}
 
 function zeigeReferate(){
   const k=kurs(); if(!k){ zeigeSeite('start'); return; }
@@ -1710,11 +1736,11 @@ function zeigeRefListe(){
   const k=kurs(), anz=aktiveSchueler(k).length;
   let h='';
   [1,2].forEach(hj=>{
-    const l=refSortiert(k,hj), mit=new Set(l.filter(r=>r.sid).map(r=>r.sid)).size;
+    const l=refSortiert(k,hj), mit=new Set(l.flatMap(r=>r.sids)).size;
     h+=`<h4>${hj}. Halbjahr <span>${mit} von ${anz}</span></h4>`;
     l.forEach(r=>{
       const e=refErgebnis(r);
-      h+=`<div class="nw${r.id===A.refId?' aktiv':''}" data-ref="${r.id}"><span><span class="t">${esc(refName(k,r))}</span><br><span class="s">${esc(r.thema||'ohne Thema')}${r.datum?' · '+datumText(r.datum):''}</span></span><span class="np ${notenKlasse(e.np)}" title="${e.np==null?e.offen+' Kriterien offen':'Notenpunkte'}">${e.np==null?'<span class="s">offen</span>':e.np}</span></div>`;
+      h+=`<div class="nw${r.id===A.refId?' aktiv':''}" data-ref="${r.id}"><span><span class="t">${r.sids.length>1?'👥 ':''}${esc(refName(k,r))}</span><br><span class="s">${esc(r.thema||'ohne Thema')}${r.datum?' · '+datumText(r.datum):''}</span></span><span class="np ${notenKlasse(e.np)}" title="${e.np==null?e.offen+' Kriterien offen':'Notenpunkte'}">${e.np==null?'<span class="s">offen</span>':e.np}</span></div>`;
     });
     h+=`<div class="neu"><button class="klein" data-refneu="${hj}">+ Referat</button></div>`;
   });
@@ -1727,20 +1753,22 @@ $('refListe').addEventListener('click', e=>{
 });
 function refNeu(hj){
   const k=kurs();
-  const r={ id:uid(), erstellt:Date.now(), hj, sid:'', datum:heuteISO(), thema:'', soll:'', ist:'', w:{}, n:{}, staerken:'', entwicklung:'', anmerkungen:'', mdl:null };
+  const r={ id:uid(), erstellt:Date.now(), hj, sids:[], datum:heuteISO(), thema:'', soll:'', ist:'', w:{}, n:{}, staerken:'', entwicklung:'', anmerkungen:'', mdl:[] };
   refs(k).push(r); A.refId=r.id; geaendert(); zeigeReferate();
   const s=document.querySelector('#refEditor select[data-rf="sid"]'); if(s) s.focus();
 }
 function zeigeRefEditor(){
   const k=kurs(), ed=$('refEditor'), r=refs(k).find(x=>x.id===A.refId);
   if(!r){ ed.innerHTML=`<div class="karte leer">Noch keine Referate. Lege links eines an.</div>`; return; }
-  const andere=sid=>refs(k).filter(x=>x!==r && x.sid===sid);
-  const sch=aktiveSchueler(k).slice(); const akt=refSchueler(k,r.sid); if(akt && akt.entfernt) sch.unshift(akt);
-  const opt=`<option value="">– Schüler wählen –</option>`+sch.map(s=>{ const a=andere(s.id); return `<option value="${esc(s.id)}"${s.id===r.sid?' selected':''}>${esc(s.nn)}, ${esc(s.vn)}${a.length?'  ✓ Referat '+[...new Set(a.map(x=>x.hj+'. HJ'))].join(', '):''}</option>`; }).join('');
-  let h=`<div class="karte"><div class="zeile" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">Referat – <span id="refTitel">${esc(refName(k,r))}</span></h2>
+  const andere=sid=>refs(k).filter(x=>x!==r && x.sids.includes(sid));
+  const mitgl=refMitglieder(k,r), gruppe=mitgl.length>1;
+  const sch=aktiveSchueler(k).filter(s=>!r.sids.includes(s.id));
+  const opt=`<option value="">${mitgl.length?'+ weiteren Schüler hinzufügen …':'– Schüler wählen –'}</option>`+sch.map(s=>{ const a=andere(s.id); return `<option value="${esc(s.id)}">${esc(s.nn)}, ${esc(s.vn)}${a.length?'  ✓ Referat '+[...new Set(a.map(x=>x.hj+'. HJ'))].join(', '):''}</option>`; }).join('');
+  let h=`<div class="karte"><div class="zeile" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">${gruppe?'Gruppenreferat':'Referat'} – <span id="refTitel">${esc(refName(k,r))}</span></h2>
       <div class="zeile"><button class="klein" data-aktion="refDrucken">Bogen drucken</button><button class="klein danger" data-aktion="refLoeschen">Löschen</button></div></div>
     <div class="kopf">
-      <label class="feld">Schüler<select data-rf="sid">${opt}</select></label>
+      <div class="feld gruppe"><label class="feld" for="refSidWahl">${gruppe?`Schüler (${mitgl.length}) – gemeinsame Bewertung, alle bekommen dieselbe Note`:'Schüler'}</label>
+        <div class="chips">${mitgl.map(s=>`<span class="chip">${esc(s.nn)}, ${esc(s.vn)}${s.entfernt?' (nicht mehr im Kurs)':''}<button type="button" data-refweg="${esc(s.id)}" title="Aus dem Referat entfernen" aria-label="${esc(s.vn+' '+s.nn)} entfernen">×</button></span>`).join('')}<select id="refSidWahl" data-rf="sid">${opt}</select></div></div>
       <label class="feld">Halbjahr<select data-rf="hj"><option value="1"${r.hj===1?' selected':''}>1. Halbjahr</option><option value="2"${r.hj===2?' selected':''}>2. Halbjahr</option></select></label>
       <label class="feld">Datum<input type="date" data-rf="datum" value="${esc(r.datum)}"></label>
       <label class="feld breit">Thema<input data-rf="thema" value="${esc(r.thema)}" placeholder="z. B. Kommunikation im Pflegeteam"></label>
@@ -1778,19 +1806,23 @@ function zeigeRefSeite(){
   h+=`<tr class="summe"><td>Gesamt</td><td></td><td></td><td class="r">${e.gesamt}/${REF_MAX}</td></tr></tbody></table>
     <div class="refNP ${notenKlasse(e.np)}"><span>Notenpunkte</span><b>${e.np==null?'–':e.np}</b></div>`;
   if(e.offen) h+=`<p class="klein" style="margin:0">Noch ${e.offen} ${e.offen===1?'Kriterium':'Kriterien'} ohne Bewertung.</p>`;
-  if(r.mdl){
-    const ist=mdlWert(k,r.mdl.sid,r.mdl.h,r.mdl.i);
-    h+=`<div class="refHinweis ok">✓ Als mündliche Note eingetragen: ${r.mdl.h}. Halbjahr, mdl ${r.mdl.i+1} (${ist==null?'–':ist} Punkte). Änderungen am Bogen werden automatisch übernommen.</div>`;
-  } else {
-    const bereit = e.np!=null && r.sid;
-    h+=`<button class="primary" data-aktion="refEintragen" style="width:100%;margin-top:10px" ${bereit?'':'disabled'}>Als mündliche Note eintragen</button>`;
-    if(!r.sid) h+=`<p class="klein" style="margin:6px 0 0">Zuerst oben den Schüler wählen.</p>`;
+  if(r.mdl.length){
+    const zeile=m=>{ const s=refSchueler(k,m.sid), ist=mdlWert(k,m.sid,m.h,m.i); return `${esc(s?s.nn+', '+s.vn:'?')}: ${m.h}. HJ, mdl ${m.i+1} (${ist==null?'–':ist} P.)`; };
+    h+=`<div class="refHinweis ok">✓ Als mündliche Note eingetragen${r.mdl.length>1?':<br>'+r.mdl.map(zeile).join('<br>'):': '+zeile(r.mdl[0])}<br>Änderungen am Bogen werden automatisch übernommen.</div>`;
+  }
+  const offen=refMitglieder(k,r).filter(s=>!r.mdl.some(x=>x.sid===s.id));
+  if(offen.length || !r.sids.length){
+    const bereit = e.np!=null && offen.length>0;
+    const txt = r.mdl.length ? `Auch für ${offen.map(s=>s.nn).join(', ')} eintragen` : (offen.length>1 ? `Für alle ${offen.length} als mündliche Note eintragen` : 'Als mündliche Note eintragen');
+    h+=`<button class="primary" data-aktion="refEintragen" style="width:100%;margin-top:10px" ${bereit?'':'disabled'}>${esc(txt)}</button>`;
+    if(!r.sids.length) h+=`<p class="klein" style="margin:6px 0 0">Zuerst oben den Schüler bzw. die Gruppe wählen.</p>`;
   }
   h+=`<details style="margin-top:12px"><summary class="klein muted" style="cursor:pointer">Umrechnungsschlüssel</summary><table class="schluesselTab" style="margin-top:6px">${(C.beTabelle(REF_MAX, REF_SCHLUESSEL, 1)||[]).map(z=>`<tr class="${notenKlasse(z.punkte)}"><td><b>${z.punkte}</b></td><td>${z.note}</td><td class="r">${z.bis==null||z.bis===z.ab?fmt(z.ab):fmt(z.ab)+'–'+fmt(z.bis)}</td></tr>`).join('')}</table></details></div>`;
   $('refSeite').innerHTML=h;
 }
 function refAktualisiert(k,r){ refAbgleich(k,r); geaendert(); zeigeRefSeite(); zeigeRefListe(); }
 $('refEditor').addEventListener('click', e=>{
+  const w=e.target.closest('button[data-refweg]'); if(w){ refMitgliedWeg(w.dataset.refweg); return; }
   const b=e.target.closest('button[data-stufe]'); if(!b) return;
   const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
   const box=b.closest('[data-krit]'), key=box.dataset.krit, v=+b.dataset.stufe;
@@ -1808,41 +1840,62 @@ $('refEditor').addEventListener('change', async e=>{
   const el=e.target, k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
   const f=el.dataset.rf;
   if(f==='datum'){ r.datum=el.value; geaendert(); zeigeRefListe(); return; }
-  if(f==='sid' || f==='hj'){
-    const neuSid = f==='sid' ? el.value : r.sid, neuHj = f==='hj' ? +el.value : r.hj;
-    const doppelt = neuSid && refs(k).find(x=>x!==r && x.sid===neuSid && x.hj===neuHj);
+  if(f==='sid'){
+    const neu=el.value; if(!neu || r.sids.includes(neu)) return;
+    const doppelt=refs(k).find(x=>x!==r && x.sids.includes(neu) && x.hj===r.hj), s=refSchueler(k,neu);
     if(doppelt){
-      const s=refSchueler(k,neuSid);
-      const ok=await frage('Schon ein Referat in diesem Halbjahr', `${s.nn}, ${s.vn} hat im ${neuHj}. Halbjahr bereits ein Referat${doppelt.thema?` („${doppelt.thema}“`:' ('}${doppelt.datum?', '+datumText(doppelt.datum):''}).\n\nTrotzdem ein weiteres Referat bewerten?`, 'Ja, weiteres Referat', 'Abbrechen');
-      if(!ok){ el.value = f==='sid' ? r.sid : String(r.hj); return; }
+      const ok=await frage('Schon ein Referat in diesem Halbjahr', `${s.nn}, ${s.vn} hat im ${r.hj}. Halbjahr bereits ein Referat${doppelt.thema?` („${doppelt.thema}“`:' ('}${doppelt.datum?', '+datumText(doppelt.datum):''}).\n\nTrotzdem zu diesem Referat hinzufügen?`, 'Ja, hinzufügen', 'Abbrechen');
+      if(!ok){ el.value=''; return; }
     }
-    r.sid=neuSid; r.hj=neuHj;
+    r.sids.push(neu);
+    const nachgetragen = r.mdl.length ? refEintragen(k,r,neu) : 0;
+    refAktualisiert(k,r); zeigeRefEditor();
+    const w=$('refSidWahl'); if(w) w.focus();
+    if(nachgetragen) toast(`${s.nn}, ${s.vn}: Note ebenfalls als mündliche Note eingetragen.`);
+    return;
+  }
+  if(f==='hj'){
+    const neuHj=+el.value;
+    const doppelt=refMitglieder(k,r).filter(s=>refs(k).some(x=>x!==r && x.sids.includes(s.id) && x.hj===neuHj));
+    if(doppelt.length){
+      const ok=await frage('Schon ein Referat in diesem Halbjahr', `${doppelt.map(s=>s.nn+', '+s.vn).join('; ')} ${doppelt.length>1?'haben':'hat'} im ${neuHj}. Halbjahr bereits ein Referat.\n\nTrotzdem verschieben?`, 'Ja, verschieben', 'Abbrechen');
+      if(!ok){ el.value=String(r.hj); return; }
+    }
+    r.hj=neuHj;
     refAktualisiert(k,r);
-    $('refTitel').textContent=refName(k,r);
   }
 });
+async function refMitgliedWeg(sid){
+  const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
+  const s=refSchueler(k,sid), m=r.mdl.find(x=>x.sid===sid);
+  const verkn = m && mdlWert(k,m.sid,m.h,m.i)===m.wert;
+  if(verkn && !(await frage('Aus dem Referat entfernen?', `${s?s.nn+', '+s.vn:'Der Schüler'} wird aus dem Referat entfernt. Die eingetragene mündliche Note (${m.wert} Punkte, ${m.h}. HJ, mdl ${m.i+1}) wird dabei wieder gelöscht.`, 'Entfernen', 'Abbrechen', true))) return;
+  r.sids=r.sids.filter(x=>x!==sid);
+  refAktualisiert(k,r); zeigeRefEditor();
+}
 async function refEintragenKlick(){
-  const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r || r.mdl) return;
-  if(!refEintragen(k,r)) return;
+  const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
+  const n=refEintragen(k,r); if(!n) return;
   geaendert(); zeigeRefSeite(); zeigeRefListe();
-  toast(`${refName(k,r)}: ${r.mdl.wert} Punkte als mündliche Note (${r.hj}. HJ, mdl ${r.mdl.i+1}) eingetragen.`);
+  const np=refErgebnis(r).np, m=r.mdl[r.mdl.length-1];
+  toast(n===1 ? `${refSchueler(k,m.sid).nn}: ${np} Punkte als mündliche Note (${r.hj}. HJ, mdl ${m.i+1}) eingetragen.` : `${np} Punkte bei ${n} Schülern als mündliche Note (${r.hj}. HJ) eingetragen.`);
 }
 async function refLoeschen(){
   const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(!r) return;
-  const verkn = r.mdl && mdlWert(k,r.mdl.sid,r.mdl.h,r.mdl.i)===r.mdl.wert;
-  if(!(await frage('Referat löschen?', `Der Bewertungsbogen von ${refName(k,r)} wird mit allen Notizen gelöscht.${verkn?`\n\nDie mündliche Note (${r.mdl.wert} Punkte, ${r.mdl.h}. HJ, mdl ${r.mdl.i+1}) wird dabei auch aus der Übersicht entfernt.`:''}`, 'Löschen', 'Abbrechen', true))) return;
-  if(verkn) mdlSetzen(k,r.mdl.sid,r.mdl.h,r.mdl.i,null);
+  const verkn = r.mdl.filter(m=>mdlWert(k,m.sid,m.h,m.i)===m.wert);
+  if(!(await frage('Referat löschen?', `Der Bewertungsbogen von ${refName(k,r)} wird mit allen Notizen gelöscht.${verkn.length?`\n\n${verkn.length>1?`Die mündlichen Noten (${verkn.length} Schüler)`:`Die mündliche Note (${verkn[0].wert} Punkte, ${verkn[0].h}. HJ, mdl ${verkn[0].i+1})`} ${verkn.length>1?'werden':'wird'} dabei auch aus der Übersicht entfernt.`:''}`, 'Löschen', 'Abbrechen', true))) return;
+  verkn.forEach(m=>mdlSetzen(k,m.sid,m.h,m.i,null));
   k.referate=refs(k).filter(x=>x!==r); A.refId=null; geaendert(); zeigeReferate();
 }
 // Ausgefüllter (oder leerer) Bewertungsbogen zum Drucken, A4 hoch
 function refBogenHTML(k, r){
-  const leer=!r; r = r || {w:{}, n:{}, hj:'', datum:'', thema:'', soll:'', ist:'', staerken:'', entwicklung:'', anmerkungen:''};
-  const e=refErgebnis(r), s=leer?null:refSchueler(k,r.sid);
+  const leer=!r; r = r || {sids:[], mdl:[], w:{}, n:{}, hj:'', datum:'', thema:'', soll:'', ist:'', staerken:'', entwicklung:'', anmerkungen:''};
+  const e=refErgebnis(r), namen=leer?[]:refMitglieder(k,r).map(s=>s.nn+', '+s.vn), gruppe=namen.length>1;
   const L='text-align:left;', TH='background:#e3efef;';
   const nl=t=>esc(t||'').replace(/\n/g,'<br>');
-  let h=`<div style="font-size:9.5pt"><h1 style="color:#1d5c63;margin:0">Bewertungsbogen Referat</h1>
+  let h=`<div style="font-size:9.5pt"><h1 style="color:#1d5c63;margin:0">Bewertungsbogen ${gruppe?'Gruppenreferat':'Referat'}</h1>
     <div class="sub">${esc(k.fach)} · Klasse ${esc(k.klasse)}${k.schuljahr?' · Schuljahr '+esc(k.schuljahr):''}</div>
-    <table><tr><th style="${L}width:16%">Name</th><td style="${L}width:34%">${s?esc(s.nn+', '+s.vn):''}</td><th style="${L}width:16%">Datum</th><td style="${L}">${datumText(r.datum)}</td></tr>
+    <table><tr><th style="${L}width:16%">${gruppe?'Gruppe':'Name'}</th><td style="${L}width:34%">${namen.map(esc).join('<br>')}${gruppe?'<br><span style="font-size:8pt;color:#555">Gemeinsame Bewertung – gleiche Note für alle</span>':''}</td><th style="${L}width:16%">Datum</th><td style="${L}">${datumText(r.datum)}</td></tr>
     <tr><th style="${L}">Thema</th><td style="${L}" colspan="3">${esc(r.thema)}</td></tr>
     <tr><th style="${L}">Dauer</th><td style="${L}">Soll: ${esc(r.soll)||'____'} Min. &nbsp; Ist: ${esc(r.ist)||'____'} Min.</td><th style="${L}">Lehrkraft</th><td style="${L}">${esc(k.lehrkraft||D.lehrkraft||'')}</td></tr></table>
     <p style="margin:5pt 0">Pro Kriterium 0–4 Punkte (4 voll erfüllt · 3 überwiegend · 2 teilweise · 1 ansatzweise · 0 nicht erfüllt). Inhalt ×1, Darstellung ×1, Vortrag ×2; max. ${REF_MAX} Punkte.</p>`;
