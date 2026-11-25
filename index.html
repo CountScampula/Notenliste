@@ -1105,7 +1105,8 @@ const APP_VERSION = 19;
 const versionText = v => '0.'+v;
 const NEUERUNGEN = [
   {v:19, datum:'25.11.2026', punkte:[
-    'Leistungsnachweise: Die Bewertungsart „Wortgutachten“ heißt jetzt „Nur Endnote eintragen“.']},
+    'Leistungsnachweise: Die Bewertungsart „Wortgutachten“ heißt jetzt „Nur Endnote eintragen“.',
+    'Bleibt die App lange offen, sieht sie einmal pro Stunde nach Updates. Gibt es eins, erscheint oben die Leiste „Jetzt aktualisieren“.']},
   {v:18, datum:'25.11.2026', punkte:[
     'Updates gelten jetzt schon beim nächsten Start der App. Bisher musste man sie zweimal neu starten.',
     'Ohne Internet startet die App wie gewohnt mit der zuletzt geladenen Version.']},
@@ -2586,6 +2587,8 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     reg.addEventListener('updatefound',()=>{ const w=reg.installing; w&&w.addEventListener('statechange',()=>{ if(w.state==='activated' && navigator.serviceWorker.controller) pruefeNeueVersion(); }); });
     // beim Zurückkehren in die App nach Updates schauen
     document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') reg.update().catch(()=>{}); });
+    // solange die App offen ist: einmal pro Stunde nachsehen
+    setInterval(()=>{ if(document.visibilityState==='visible' && navigator.onLine!==false) reg.update().catch(()=>{}); }, 60*60*1000);
   }).catch(e=>console.warn('SW',e));
 }
 (async()=>{
