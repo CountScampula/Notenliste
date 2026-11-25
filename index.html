@@ -45,7 +45,13 @@ nav#tabs button{flex:none}
 nav#tabs button{border:none;background:none;color:var(--muted);padding:7px 11px}
 nav#tabs button.aktiv{background:var(--accent-soft);color:var(--accent);font-weight:600}
 #status{margin-left:auto;font-size:12.5px;color:var(--muted);white-space:nowrap}
-#hinweisLeiste{display:none;background:var(--warn-soft);color:var(--warn);padding:8px 18px;font-size:14px;border-bottom:1px solid #f0d9c6}
+#hinweisLeiste{display:none;background:var(--warn-soft);color:var(--warn);padding:9px 18px;font-size:14px;border-bottom:1px solid #f0d9c6}
+#hinweisLeiste.fehler{background:var(--err-soft);color:var(--err);border-bottom:2px solid #e3a9a9}
+#hinweisLeiste #hinweisText b{font-weight:700}
+#hinweisLeiste .detail{display:block;font-size:12.5px;opacity:.9;margin-top:2px}
+#hinweisLeiste .knoepfe{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+#hinweisLeiste.fehler button.primary{background:var(--err);border-color:var(--err)}
+#status.fehler{color:var(--err);font-weight:600}
 #hinweisLeiste.zeigen{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 main{padding:18px;max-width:1500px;margin:0 auto}
 .seite{display:none}
@@ -56,7 +62,32 @@ main{padding:18px;max-width:1500px;margin:0 auto}
 .karte p{margin:6px 0;color:var(--muted)}
 
 /* Start */
-#start .schritte{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:10px}
+#start .karte{max-width:900px;margin-left:auto;margin-right:auto}
+#start .schritte{display:flex;flex-direction:column;gap:16px;margin-top:14px}
+#start .einleitung{font-size:15.5px}
+#start .fortschritt{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 2px;font-size:14px;color:var(--muted)}
+#start .fortschritt .balken{flex:1;min-width:160px;max-width:320px;height:8px;border-radius:99px;background:var(--line2);overflow:hidden}
+#start .fortschritt .balken i{display:block;height:100%;background:var(--ok)}
+#start .schritt.aktuell{border:2px solid var(--accent);background:#fff;box-shadow:0 2px 10px rgba(29,92,99,.10)}
+#start .schritt.erledigt{background:var(--ok-soft);border-color:#bfd9c5}
+#start .schritt.gesperrt{opacity:.6}
+#start .schritt.gesperrt button{pointer-events:none}
+#start .nr.ok{background:var(--ok)}
+#start .nr.grau{background:#9aa0a6}
+#start .marke2{margin-left:auto;font-size:13px;font-weight:600;padding:2px 10px;border-radius:99px;white-space:nowrap}
+#start .marke2.ok{background:#fff;color:var(--ok);border:1px solid #bfd9c5}
+#start .marke2.offen{background:var(--warn-soft);color:var(--warn)}
+#start .marke2.zu{background:var(--line2);color:var(--muted)}
+#start .wahl{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin:12px 0 6px}
+#start .wahl>div{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;display:flex;flex-direction:column;gap:8px}
+#start .wahl h4{margin:0;font-size:15px}
+#start .wahl p{margin:0}
+#start .wahl button{align-self:flex-start}
+#start .tipp{background:var(--accent-soft);color:#173f44;border-radius:10px;padding:10px 14px;font-size:14px;margin:10px 0}
+#start .achtung{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 14px;font-size:14px;margin:10px 0}
+#start .grossKnopf{font-size:16px;padding:10px 18px}
+#start ol.anleitung{margin:6px 0 0 0;padding-left:20px;font-size:14px}
+#start ol.anleitung li{margin:3px 0}
 #start .schritt{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:#fbfaf7}
 #start .schritt h3{display:flex;gap:10px;align-items:center}
 #start .nr{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex:none}
@@ -252,6 +283,7 @@ body.druckmodus #druck td.l,body.druckmodus #druck th.l{text-align:left}
   <h1 class="marke"><svg width="30" height="30" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="gn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a7a80"/><stop offset="1" stop-color="#174b51"/></linearGradient></defs><rect width="64" height="64" rx="15" fill="url(#gn)"/><rect x="13" y="12" width="38" height="42" rx="4" fill="#fff"/><path d="M13 22h38M13 32h38M13 42h38M26 12v42" stroke="#cfe3e3" stroke-width="2"/><path d="M17.5 17h4.5M17.5 27h4.5M17.5 37h4.5M17.5 47h4.5" stroke="#1d5c63" stroke-width="2.4" stroke-linecap="round"/><text x="38.5" y="30" font-family="Arial,Helvetica,sans-serif" font-size="8.5" font-weight="700" fill="#1d5c63" text-anchor="middle">15</text><text x="38.5" y="40" font-family="Arial,Helvetica,sans-serif" font-size="8.5" font-weight="700" fill="#1d5c63" text-anchor="middle">12</text><circle cx="47" cy="47" r="9" fill="#e0a43a"/><path d="M42.8 47.2l2.9 2.9 5.4-5.6" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Noten</b>liste</span></h1>
   <select id="kursWahl" hidden></select>
   <nav id="tabs" hidden>
+    <button data-seite="start" id="tabStart">Einrichtung</button>
     <button data-seite="uebersicht" class="aktiv">Übersicht</button>
     <button data-seite="nachweise">Leistungsnachweise</button>
     <button data-seite="referate">Referate</button>
@@ -261,33 +293,27 @@ body.druckmodus #druck td.l,body.druckmodus #druck th.l{text-align:left}
   </nav>
   <span id="status"></span>
 </header>
-<div id="hinweisLeiste"><span id="hinweisText"></span><button class="klein primary" id="btnHinweisSichern">Jetzt sichern</button></div>
+<div id="hinweisLeiste" role="alert"><span id="hinweisText"></span><span class="knoepfe"><button class="klein primary" id="btnHinweisSichern">Jetzt sichern</button><button class="klein" id="btnHinweis2" hidden></button></span></div>
 
 <main>
   <!-- Start -->
-  <section id="start" class="seite">
-    <div class="karte">
-      <h2>Willkommen</h2>
-      <p>Die Notenliste speichert alles auf diesem Gerät. Es werden keine Daten ins Internet übertragen.</p>
-      <div class="schritte">
-        <div class="schritt">
-          <h3><span class="nr">1</span>Schülerlisten laden</h3>
-          <p>Lade das <b>Schuljahrespaket</b> (<code>.nta</code>), das du von der Schule bekommen hast.</p>
-          <div class="zeile"><button class="primary" data-aktion="paketLaden">Schuljahrespaket laden …</button></div>
-          <p class="klein" id="startPaketInfo"></p>
-        </div>
-        <div class="schritt">
-          <h3><span class="nr">2</span>Kurs anlegen</h3>
-          <p>Wähle Klasse und Fach. Danach trägst du Leistungsnachweise und mündliche Noten ein.</p>
-          <div class="zeile"><button class="primary" data-aktion="kursNeu">+ Kurs anlegen</button></div>
-        </div>
-        <div class="schritt">
-          <h3><span class="nr">3</span>Datendatei</h3>
-          <p id="startDateiText">Alle Kurse und Noten stehen in einer Datei, z. B. <code>Notenliste_Daten.json</code> in OneDrive. Hast du schon eine, öffne sie. Sonst lege eine neue an.</p>
-          <div class="zeile"><button class="primary" data-aktion="dateiOeffnen">Datendatei öffnen …</button><button data-aktion="dateiNeu" id="startDateiNeu">Neue Datendatei anlegen …</button></div>
-        </div>
-      </div>
-      <p class="klein" style="margin-top:14px">Du erstellst die Schuljahrespakete für deine Schule? Unter <button class="link" data-aktion="zuVerwaltung">Verwaltung</button> importierst du die Schülerlisten aus Excel.</p>
+  <section id="start" class="seite"><div class="karte" id="startInhalt"></div></section>
+
+  <!-- Verwaltung (Schuljahrespaket aus Excel erstellen) -->
+  <section id="verwaltungSeite" class="seite">
+    <div class="karte" id="verwaltung">
+      <p style="margin-top:0"><button class="link" data-aktion="verwaltungZurueck">← Zurück</button></p>
+      <h2>Verwaltung: Schuljahrespaket erstellen</h2>
+      <p>Diese Seite ist nur für die Lehrkraft, die die Schülerlisten für die ganze Schule vorbereitet. Alle anderen laden in der Einrichtung einfach das fertige Schuljahrespaket (<code>.nta</code>).</p>
+      <ol class="klein" style="padding-left:20px">
+        <li>Importiere die Excel-Datei mit allen Klassen.</li>
+        <li>Prüfe die Vorschau, vergib ein Passwort und klicke auf „Schuljahrespaket erstellen“. Die <code>.nta</code>-Datei wird heruntergeladen.</li>
+        <li>Gib die Datei über einen Kanal der Schule weiter (z. B. Schulcloud oder Laufwerk im Schulnetz) und das Passwort getrennt davon.</li>
+        <li>Willst du die Klassen auch selbst verwenden, klicke zusätzlich auf „Auch hier verwenden“.</li>
+      </ol>
+      <p class="klein">Erkannt werden ein Blatt „Schule“ wie in der bisherigen Notenliste (Spalte A Klasse, C Nachname, D Vorname) oder eine Tabelle mit den Überschriften <code>Klasse</code>, <code>Nachname</code>, <code>Vorname</code>. Für ein Zusatzpaket (z. B. Wahlpflichtfach) zusätzlich eine Spalte <code>Wahlpflichtfach</code> oder <code>Gruppe</code>.</p>
+      <div class="zeile"><button class="primary" data-aktion="verwaltungImport">Schülerliste aus Excel importieren …</button></div>
+      <div id="verwaltungVorschau"></div>
     </div>
   </section>
 
@@ -548,6 +574,23 @@ function nativHandle(name){ return { name, kind:'file', nativ:true,
   createWritable: async()=>{ let puffer=''; return { write: async t=>{ puffer += (typeof t==='string') ? t : await new Response(t).text(); }, close: async()=>{ await nativ('schreiben',{text:puffer}); }, abort: async()=>{} }; } }; }
 const FS_DATEI = NATIV || ('showSaveFilePicker' in window && 'showOpenFilePicker' in window);
 let dateiHandle=null, dateiOk=false, dateiBeschaeftigt=false;
+// Probleme mit der Datendatei bzw. dem Browser-Speicher (für Warnhinweise)
+// dateiFehler.art: 'schreiben' | 'lesen' | 'gesperrt' | 'unlesbar' | 'konflikt'
+let dateiFehler=null, lokalFehler=null, wiederholTimer=null;
+function setzeDateiFehler(art, info){
+  dateiFehler={art, info:String(info||''), seit:(dateiFehler&&dateiFehler.art===art&&dateiFehler.seit)||new Date().toISOString()};
+  dateiOk=false;
+  setStatus(art==='konflikt'?'⚠ Nicht gespeichert – Entscheidung nötig':'⚠ Nicht in der Datei gespeichert', true);
+  pruefeHinweis();
+  clearInterval(wiederholTimer);
+  if(art==='schreiben' || art==='lesen') wiederholTimer=setInterval(()=>dateiWiederholen(true), 30000);
+}
+function dateiFehlerWeg(){ dateiFehler=null; clearInterval(wiederholTimer); wiederholTimer=null; const st=$('status'); if(st && st.classList.contains('fehler')) setStatus(''); }
+// Einrichtung: Datendatei gewählt + Schülerlisten geladen
+function dateiEingerichtet(){ return FS_DATEI ? !!(dateiHandle && (dateiOk || dateiFehler)) : !!D.dateiStand; }
+function zugriffFehlt(){ return FS_DATEI && !!dateiHandle && !dateiOk && !dateiFehler; }
+function listenEingerichtet(){ return !!D.stamm || !!(D.zusatz&&D.zusatz.length); }
+function einrichtungFertig(){ return dateiEingerichtet() && listenEingerichtet(); }
 const JSON_TYPEN=[{description:'Notenliste-Daten', accept:{'application/json':['.json']}}];
 
 /* ================= Verschlüsselung (Datendatei, Sicherungen, Gerätespeicher) =================
@@ -754,14 +797,16 @@ function geaendert(){
   setStatus('Speichert …');
   clearTimeout(speicherTimer);
   speicherTimer=setTimeout(async()=>{
-    try{ await kvSet('daten', D); if(!dateiOk) setStatus(dateiHandle?'⚠ Datei nicht verbunden':'✓ Auf diesem Gerät gespeichert'); }
-    catch(e){ setStatus('⚠ Nicht gespeichert'); dialog('Speichern fehlgeschlagen', String(e.message||e)); }
+    try{ await kvSet('daten', D); if(lokalFehler){ lokalFehler=null; pruefeHinweis(); }
+      if(!dateiOk) setStatus(dateiFehler?'⚠ Nur im Browser gespeichert':(FS_DATEI?'⚠ Datei nicht verbunden':'✓ Auf diesem Gerät gespeichert'), !!dateiFehler || FS_DATEI); }
+    catch(e){ const erstes=!lokalFehler; lokalFehler=String(e.message||e); setStatus('⚠ Nicht gespeichert', true); pruefeHinweis();
+      if(erstes) dialog('Speichern im Browser fehlgeschlagen', 'Deine letzte Änderung konnte nicht im Browser gespeichert werden ('+lokalFehler+').'+(dateiOk?' In die Datendatei wird trotzdem weiter gespeichert.':'')+'\n\nLade zur Sicherheit jetzt eine Kopie herunter (Knopf in der roten Leiste oben).'); }
     if(dateiOk){ clearTimeout(dateiTimer); dateiTimer=setTimeout(()=>dateiSchreiben(), 500); }
     clearTimeout(ordnerTimer); ordnerTimer=setTimeout(ordnerSichern, 4000);
     pruefeHinweis();
   }, 250);
 }
-function setStatus(t){ $('status').textContent=t; }
+function setStatus(t, fehler){ const e=$('status'); e.textContent=t; e.classList.toggle('fehler', !!fehler); }
 async function persistieren(){ try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist(); }catch(e){} }
 function hatDaten(d){ return !!(d && ((d.kurse&&d.kurse.length) || d.stamm || (d.zusatz&&d.zusatz.length))); }
 /* ---- Schuljahrespaket + Zusatzpakete (z. B. Wahlpflichtfach) ---- */
@@ -805,7 +850,7 @@ async function dateiSchreiben(erzwingen){
   try{
     if(!erzwingen){
       const ext=await leseDatenDatei(await (await dateiHandle.getFile()).text(), dateiHandle.name);
-      if(ext.gesperrt){ dateiOk=false; dateiBeschaeftigt=false; setStatus('⚠ Datei gesperrt'); pruefeHinweis(); return; }
+      if(ext.gesperrt){ dateiBeschaeftigt=false; setzeDateiFehler('gesperrt'); return; }
       const extStand = ext.daten && ext.daten.geaendert;
       if(extStand && D.dateiStand && extStand!==D.dateiStand){ dateiBeschaeftigt=false; await konflikt(ext.daten); return; }
     }
@@ -813,12 +858,13 @@ async function dateiSchreiben(erzwingen){
     const stand=D.geaendert;
     const text=await datenDateiText(); const w=await dateiHandle.createWritable(); await w.write(text); await w.close();
     D.dateiStand=stand; if(D.geaendert!==stand) dateiNochmal=true;
-    D.letzteSicherung=new Date().toISOString(); await kvSet('daten', D);
+    D.letzteSicherung=new Date().toISOString();
+    const warFehler=!!dateiFehler; dateiFehlerWeg();
     setStatus(`✓ Gespeichert in ${dateiHandle.name}`); pruefeHinweis();
+    if(warFehler) toast('Wieder verbunden – alles ist in der Datendatei gespeichert.');
+    try{ await kvSet('daten', D); }catch(e){}
   }catch(e){
-    dateiOk=false; setStatus('⚠ Datei nicht gespeichert');
-    $('hinweisText').textContent=`In „${dateiHandle.name}“ konnte nicht gespeichert werden (${e.message||e}). Deine Eingaben sind auf diesem Gerät gesichert.`;
-    $('btnHinweisSichern').textContent='Erneut verbinden'; $('hinweisLeiste').classList.add('zeigen');
+    setzeDateiFehler('schreiben', e.message||e);
   }
   dateiBeschaeftigt=false;
   if(dateiNochmal && dateiOk){ dateiNochmal=false; clearTimeout(dateiTimer); dateiTimer=setTimeout(()=>dateiSchreiben(), 300); }
@@ -828,18 +874,22 @@ async function konflikt(extDaten){
     `„${dateiHandle.name}“ wurde inzwischen an einem anderen Gerät geändert (Stand ${zeitTxt(extDaten.geaendert)}).\nAuch hier gibt es Änderungen, die noch nicht in der Datei stehen (Stand ${zeitTxt(D.geaendert)}).\n\nWelchen Stand möchtest du behalten? Der andere wird vorsichtshalber als Kopie heruntergeladen.`,
     [{t:'Stand aus der Datei laden',w:'datei'},{t:'Stand von diesem Gerät behalten',w:'hier',p:true}]);
   if(a==='datei'){ download(`Notenliste_Kopie_dieses_Geraets_${heuteISO()}.json`, await datenDateiText()); datenUebernehmen(extDaten); await kvSet('daten',D); toast('Stand aus der Datei geladen.'); }
-  else if(a==='hier'){ download(`Notenliste_Kopie_aus_Datei_${heuteISO()}.json`, await datenDateiText(extDaten)); D.dateiStand=extDaten.geaendert; await dateiSchreiben(true); toast('Datei mit dem Stand dieses Geräts überschrieben.'); }
+  else if(a==='hier'){ download(`Notenliste_Kopie_aus_Datei_${heuteISO()}.json`, await datenDateiText(extDaten)); D.dateiStand=extDaten.geaendert; dateiFehlerWeg(); dateiOk=true; await dateiSchreiben(true); toast('Datei mit dem Stand dieses Geräts überschrieben.'); }
+  else { setzeDateiFehler('konflikt'); return; }
+  if(dateiFehler && dateiFehler.art==='konflikt'){ dateiFehlerWeg(); dateiOk=true; }
+  pruefeHinweis();
 }
 // beim Start, beim Verbinden und wenn das Fenster wieder aktiv wird
 async function dateiAbgleich(){
   if(!dateiHandle || !dateiOk || dateiBeschaeftigt) return;
   let ext;
-  try{ ext=await leseDatenDatei(await (await dateiHandle.getFile()).text(), dateiHandle.name); }catch(e){ dateiOk=false; setStatus('⚠ Datei nicht erreichbar'); return; }
-  if(ext.gesperrt){ dateiOk=false; setStatus('⚠ Datei gesperrt'); pruefeHinweis(); return; }
-  if(ext.fehler){ dateiOk=false; return dialog('Datei nicht lesbar', `„${dateiHandle.name}“: ${ext.fehler}\n\nDeine Daten auf diesem Gerät sind nicht betroffen. Wähle unter „Daten & Einstellungen“ eine andere Datei.`); }
+  try{ ext=await leseDatenDatei(await (await dateiHandle.getFile()).text(), dateiHandle.name); }catch(e){ setzeDateiFehler('lesen', e.message||e); return; }
+  if(ext.gesperrt){ setzeDateiFehler('gesperrt'); return; }
+  if(ext.fehler){ setzeDateiFehler('unlesbar', ext.fehler); return dialog('Datei nicht lesbar', `„${dateiHandle.name}“: ${ext.fehler}\n\nIn diese Datei wird nichts geschrieben. Deine Daten auf diesem Gerät sind nicht betroffen. Wähle über die rote Leiste oben die richtige Datendatei (Notenliste_Daten.json).`); }
   if(ext.leer){ await dateiSchreiben(true); return; }
   const extStand=ext.daten.geaendert, lokalGeaendert = D.geaendert && D.geaendert!==D.dateiStand;
-  if(extStand===D.dateiStand){ if(lokalGeaendert) await dateiSchreiben(true); else setStatus(`✓ Gespeichert in ${dateiHandle.name}`); return; }
+  if(dateiFehler) dateiFehlerWeg();
+  if(extStand===D.dateiStand){ if(lokalGeaendert) await dateiSchreiben(true); else { setStatus(`✓ Gespeichert in ${dateiHandle.name}`); pruefeHinweis(); } return; }
   if(!lokalGeaendert || !hatDaten(D)){ datenUebernehmen(ext.daten); await kvSet('daten',D); setStatus(`✓ Gespeichert in ${dateiHandle.name}`); if(D.dateiStand) toast('Aktueller Stand aus der Datei geladen.'); return; }
   if(!D.dateiStand){
     const a=await dialog('Welche Daten verwenden?', `Die Datei „${dateiHandle.name}“ enthält bereits Daten (Stand ${zeitTxt(extStand)}). Auch auf diesem Gerät sind Daten vorhanden (Stand ${zeitTxt(D.geaendert)}).`,
@@ -853,13 +903,14 @@ async function dateiAbgleich(){
 }
 async function dateiVerbinden(handle, neu){
   dateiHandle=handle;
-  try{ if((await handle.queryPermission({mode:'readwrite'}))!=='granted' && (await handle.requestPermission({mode:'readwrite'}))!=='granted'){ dateiOk=false; toast('Ohne Erlaubnis kann nicht in die Datei gespeichert werden.'); pruefeHinweis(); return; } }
-  catch(e){ dateiOk=false; return; }
-  await kvSet('datei', handle.nativ ? {nativ:true, name:handle.name} : handle);
-  dateiOk=true; $('hinweisLeiste').classList.remove('zeigen');
+  dateiFehlerWeg();
+  try{ if((await handle.queryPermission({mode:'readwrite'}))!=='granted' && (await handle.requestPermission({mode:'readwrite'}))!=='granted'){ dateiOk=false; await dialog('Zugriff nicht erlaubt', `Die Notenliste darf „${handle.name}“ nicht bearbeiten. Ohne diese Erlaubnis kann sie deine Noten nicht in der Datei speichern.\n\nKlicke noch einmal auf den Knopf und wähle im Fenster des Browsers die Erlaubnis zum Bearbeiten bzw. Speichern.`); einrichtungWeiter(); return; } }
+  catch(e){ dateiOk=false; einrichtungWeiter(); return; }
+  try{ await kvSet('datei', handle.nativ ? {nativ:true, name:handle.name} : handle); }catch(e){}
+  dateiOk=true;
   if(neu){ D.dateiStand=null; if(!D.geaendert) D.geaendert=new Date().toISOString(); await dateiSchreiben(true); }
   else await dateiAbgleich();
-  persistieren(); pruefeHinweis(); if(A.seite==='daten') zeigeDaten();
+  persistieren(); einrichtungWeiter();
 }
 async function dateiNeu(){
   if(NATIV){ try{ const name=await nativ('neu',{name:'Notenliste_Daten.json', text:await datenDateiText()}); if(!name) return; D.dateiStand=null; await dateiVerbinden(nativHandle(name), true); toast(`Daten werden ab jetzt in „${name}“ gespeichert.`); }catch(e){ if(!/abgebrochen/.test(e.message)) dialog('Datei konnte nicht angelegt werden', String(e.message||e)); } return; }
@@ -875,12 +926,34 @@ async function dateiOeffnen(){
 }
 async function dateiErneutVerbinden(){ if(dateiHandle) await dateiVerbinden(dateiHandle, false); }
 async function dateiTrennen(){
-  if(!(await frage('Datei trennen?', `Die App speichert dann nicht mehr in „${dateiHandle.name}“, sondern nur noch auf diesem Gerät. Die Datei selbst bleibt erhalten.`, 'Trennen'))) return;
+  if(!(await frage('Datei trennen?', `Die App speichert dann nicht mehr in „${dateiHandle.name}“. Die Datei selbst bleibt erhalten.\n\nDanach musst du in der Einrichtung wieder eine Datendatei auswählen, bevor du weiterarbeiten kannst.`, 'Trennen', 'Abbrechen', true))) return;
   if(NATIV){ try{ await nativ('trennen'); }catch(e){} }
-  dateiHandle=null; dateiOk=false; D.dateiStand=null; await kvSet('datei', null); geaendert(); zeigeDaten();
+  dateiHandle=null; dateiOk=false; dateiFehlerWeg(); D.dateiStand=null; await kvSet('datei', null); geaendert(); einrichtungWeiter();
 }
-window.addEventListener('focus', ()=>{ if(dateiOk) dateiAbgleich(); });
-document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && dateiOk) dateiAbgleich(); });
+function beiRueckkehr(){ if(dateiOk) dateiAbgleich(); else if(dateiFehler && (dateiFehler.art==='schreiben'||dateiFehler.art==='lesen')) dateiWiederholen(true); }
+window.addEventListener('focus', beiRueckkehr);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') beiRueckkehr(); });
+// erneut versuchen (still = ohne Nachfrage, z. B. alle 30 s im Hintergrund)
+let wiederholLaeuft=false;
+async function dateiWiederholen(still){
+  if(!dateiHandle || dateiBeschaeftigt || wiederholLaeuft) return;
+  wiederholLaeuft=true;
+  try{
+    let erlaubt=false;
+    try{ erlaubt=(await dateiHandle.queryPermission({mode:'readwrite'}))==='granted' || (!still && (await dateiHandle.requestPermission({mode:'readwrite'}))==='granted'); }catch(e){}
+    if(!erlaubt){ if(!still){ dateiFehlerWeg(); dateiOk=false; einrichtungWeiter(); } return; }
+    const vorher=dateiFehler; dateiOk=true;
+    if(vorher && vorher.art!=='konflikt') dateiFehler=null;
+    await dateiAbgleich();
+    if(!dateiFehler && dateiOk && vorher && !still) toast('Verbindung zur Datendatei steht wieder.');
+    if(!dateiFehler) clearInterval(wiederholTimer);
+  } finally { wiederholLaeuft=false; pruefeHinweis(); }
+}
+// Warnung beim Schließen, solange etwas nicht in der Datendatei steht
+window.addEventListener('beforeunload', e=>{
+  const offen = D.geaendert && D.geaendert!==D.dateiStand && hatDaten(D);
+  if(dateiBeschaeftigt || lokalFehler || (offen && (dateiFehler || !dateiOk))){ e.preventDefault(); e.returnValue=''; }
+});
 
 /* ---- iPad / Safari / Firefox: Datei öffnen und speichern von Hand ---- */
 async function dateiOeffnenManuell(){
@@ -894,7 +967,7 @@ async function dateiOeffnenManuell(){
     if(!a) return;
     await dateiSpeichernManuell(true, `Notenliste_Kopie_dieses_Geraets_${heuteISO()}.json`);
   }
-  datenUebernehmen(ext.daten); await kvSet('daten',D); persistieren(); pruefeHinweis(); toast(`Daten aus „${f.name}“ geladen.`);
+  datenUebernehmen(ext.daten); await kvSet('daten',D); persistieren(); einrichtungWeiter(); toast(`Daten aus „${f.name}“ geladen.`);
 }
 async function dateiSpeichernManuell(still, name){
   name = name || 'Notenliste_Daten.json';
@@ -903,7 +976,7 @@ async function dateiSpeichernManuell(still, name){
   try{ if(navigator.canShare && navigator.canShare({files:[datei]}) && /iPad|iPhone|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document){ await navigator.share({files:[datei], title:'Notenliste-Daten'}); ok=true; } }
   catch(e){ if(e.name==='AbortError') return; }
   if(!ok) download(name, text);
-  if(!still){ D.dateiStand=D.geaendert; D.letzteSicherung=new Date().toISOString(); await kvSet('daten',D); pruefeHinweis(); toast('Datei gespeichert.'); }
+  if(!still){ if(!D.geaendert) D.geaendert=new Date().toISOString(); D.dateiStand=D.geaendert; D.letzteSicherung=new Date().toISOString(); await kvSet('daten',D); einrichtungWeiter(); toast('Datei gespeichert.'); }
 }
 function download(name, inhalt, typ){
   if(NATIV){ nativ('teilen',{name, text:String(inhalt)}).catch(()=>{}); return; }
@@ -935,18 +1008,28 @@ async function ordnerFreigeben(){
 }
 
 function pruefeHinweis(){
-  const l=$('hinweisLeiste'), t=$('hinweisText'), b=$('btnHinweisSichern');
-  if(dateiHandle && !dateiOk){ t.textContent=`Die Notenliste speichert in „${dateiHandle.name}“. Bitte erlaube den Zugriff, damit deine Änderungen in der Datei landen.`; b.textContent='Zugriff erlauben'; b.dataset.was='verbinden'; l.classList.add('zeigen'); return; }
-  if(dateiOk){ l.classList.remove('zeigen'); return; }
-  const hatNoten=D.kurse.some(k=>k.nachweise.length || Object.keys(k.mdl||{}).length);
-  const offen = D.geaendert && D.geaendert!==D.dateiStand;
-  const tage = D.letzteSicherung ? (Date.now()-new Date(D.letzteSicherung))/864e5 : Infinity;
-  if(hatNoten && offen && (tage>1 || !D.letzteSicherung)){
-    t.textContent = FS_DATEI ? 'Deine Noten liegen nur im Browser. Lege eine Datendatei an (z. B. in OneDrive), dann speichert die App jede Änderung automatisch dort.'
-                             : 'Es gibt Änderungen, die noch in keiner Datei gespeichert sind. Speichere die Datendatei, z. B. in OneDrive oder iCloud Drive.';
-    b.textContent = FS_DATEI ? 'Datendatei anlegen' : 'Datei speichern'; b.dataset.was = FS_DATEI ? 'neu' : 'speichern';
-    l.classList.add('zeigen');
-  } else l.classList.remove('zeigen');
+  const l=$('hinweisLeiste'), t=$('hinweisText'), b1=$('btnHinweisSichern'), b2=$('btnHinweis2');
+  const name = dateiHandle ? `„${esc(dateiHandle.name)}“` : 'die Datendatei';
+  const zuletzt = D.letzteSicherung ? ` Zuletzt erfolgreich gespeichert: ${zeitTxt(D.letzteSicherung)}.` : '';
+  const zeige=(art, html, k1, k2)=>{
+    t.innerHTML=html; l.classList.toggle('fehler', art==='fehler'); l.classList.add('zeigen');
+    b1.textContent=k1[0]; b1.dataset.was=k1[1];
+    b2.hidden=!k2; if(k2){ b2.textContent=k2[0]; b2.dataset.was=k2[1]; }
+  };
+  const kopie=['Sicherheitskopie herunterladen','kopie'];
+  if(lokalFehler) return zeige('fehler', `<b>⚠ Speichern im Browser fehlgeschlagen.</b> Lade sofort eine Sicherheitskopie herunter, damit nichts verloren geht.<span class="detail">Ursache: ${esc(lokalFehler)}${dateiOk?' · In die Datendatei wird weiterhin gespeichert.':''}</span>`, kopie);
+  if(dateiFehler){
+    const f=dateiFehler, detail=f.info?` Technische Meldung: ${esc(f.info)}`:'';
+    if(f.art==='schreiben') return zeige('fehler', `<b>⚠ Deine Änderungen werden gerade NICHT in ${name} gespeichert.</b> Sie liegen vorerst nur in diesem Browser.<span class="detail">Mögliche Ursachen: OneDrive ist abgemeldet oder hängt, die Datei wurde verschoben, umbenannt oder ist in einem anderen Programm geöffnet, oder das Netzlaufwerk ist nicht erreichbar. Die Notenliste versucht es alle 30 Sekunden erneut.${zuletzt}${detail}</span>`, ['Erneut versuchen','erneut'], kopie);
+    if(f.art==='lesen') return zeige('fehler', `<b>⚠ ${name} ist gerade nicht erreichbar.</b> Bis die Datei wieder da ist, wird nur in diesem Browser gespeichert.<span class="detail">Prüfe, ob OneDrive läuft bzw. das Laufwerk verbunden ist und ob die Datei verschoben oder umbenannt wurde. Die Notenliste versucht es alle 30 Sekunden erneut.${zuletzt}${detail}</span>`, ['Erneut versuchen','erneut'], kopie);
+    if(f.art==='gesperrt') return zeige('fehler', `<b>⚠ ${name} ist verschlüsselt und noch nicht entsperrt.</b> Bis du sie entsperrst, wird nichts in die Datei gespeichert.`, ['Jetzt entsperren','erneut'], kopie);
+    if(f.art==='unlesbar') return zeige('fehler', `<b>⚠ ${name} enthält keine Daten der Notenliste.</b> Vermutlich wurde die falsche Datei gewählt. Es wird nichts hineingeschrieben.<span class="detail">${esc(f.info)}</span>`, ['Richtige Datendatei wählen …','oeffnen'], kopie);
+    if(f.art==='konflikt') return zeige('warn', `<b>⚠ ${name} wurde an einem anderen Gerät geändert.</b> Entscheide, welcher Stand gelten soll. Bis dahin wird nichts in die Datei gespeichert.`, ['Jetzt entscheiden','erneut'], kopie);
+  }
+  if(zugriffFehlt() && A.seite!=='start') return zeige('warn', `<b>Die Notenliste braucht deine Erlaubnis, um in ${name} zu speichern.</b> Das ist nach jedem Neustart des Browsers einmal nötig.`, ['Zugriff erlauben','verbinden']);
+  if(!FS_DATEI && D.dateiStand && hatDaten(D) && D.geaendert && D.geaendert!==D.dateiStand)
+    return zeige('warn', `<b>Noch nicht in der Datendatei gespeichert.</b> Tippe auf „Datei speichern“ und ersetze im Teilen-Menü über „In Dateien sichern“ die vorhandene <code>Notenliste_Daten.json</code> in OneDrive bzw. iCloud Drive.`, ['Datei speichern','speichern']);
+  l.classList.remove('zeigen','fehler');
 }
 
 /* ================= Dialoge ================= */
@@ -1007,13 +1090,21 @@ function rechenKurs(k){
 function rechenNw(n){ return {...n, schluessel:schluesselVon(n.schluessel)}; }
 
 /* ================= Navigation ================= */
+// Solange die Einrichtung nicht fertig ist, sind nur diese Seiten erreichbar
+const FREI_OHNE_EINRICHTUNG=['start','schluesselrechner','verwaltungSeite'];
 function zeigeSeite(id){
+  const fertig=einrichtungFertig();
+  if(!fertig && !FREI_OHNE_EINRICHTUNG.includes(id)) id='start';
   A.seite=id;
   document.querySelectorAll('.seite').forEach(s=>s.classList.toggle('aktiv', s.id===id));
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('aktiv', b.dataset.seite===id));
   const hatKurs=!!kurs();
-  $('tabs').hidden = false; $('kursWahl').hidden = !D.kurse.length;
-  ['uebersicht','nachweise','referate','schueler'].forEach(t=>{ const b=document.querySelector(`#tabs button[data-seite="${t}"]`); if(b) b.hidden=!hatKurs; });
+  $('tabs').hidden = false; $('kursWahl').hidden = !fertig || !D.kurse.length;
+  ['uebersicht','nachweise','referate','schueler'].forEach(t=>{ const b=document.querySelector(`#tabs button[data-seite="${t}"]`); if(b) b.hidden=!(fertig && hatKurs); });
+  const ts=$('tabStart'); ts.hidden = fertig && hatKurs; ts.textContent = fertig ? 'Start' : '⚙ Einrichtung';
+  document.querySelector('#tabs button[data-seite="daten"]').hidden = !fertig;
+  if(id==='verwaltungSeite' && verwaltungDaten) zeigeVerwaltungVorschau();
+  if(typeof pruefeHinweis==='function') setTimeout(pruefeHinweis,0);
   if(id==='schluesselrechner') zeigeSchluesselrechner();
   if(id==='uebersicht') zeigeUebersicht();
   if(id==='nachweise') zeigeNachweise();
@@ -1031,7 +1122,7 @@ function fuelleKursWahl(){
 }
 $('kursWahl').onchange=async e=>{
   if(e.target.value==='__neu'){ e.target.value=D.aktKurs||''; await kursNeu(); return; }
-  D.aktKurs=e.target.value; A.nwId=null; A.refId=null; geaendert(); zeigeSeite(A.seite==='start'||A.seite==='daten'?'uebersicht':A.seite);
+  D.aktKurs=e.target.value; A.nwId=null; A.refId=null; geaendert(); zeigeSeite(['start','daten','verwaltungSeite'].includes(A.seite)?'uebersicht':A.seite);
 };
 $('tabs').onclick=e=>{ const b=e.target.closest('button'); if(b) zeigeSeite(b.dataset.seite); };
 document.addEventListener('click', e=>{
@@ -1039,10 +1130,85 @@ document.addEventListener('click', e=>{
   const f=AKTIONEN[b.dataset.aktion]; if(f) f(b);
 });
 
-/* ================= Start ================= */
+/* ================= Start / Einrichtung ================= */
+// nach jedem Einrichtungsschritt: passende Seite zeigen
+function einrichtungWeiter(){
+  const sei=A.seite;
+  if(!einrichtungFertig()) zeigeSeite(FREI_OHNE_EINRICHTUNG.includes(sei)?sei:'start');
+  else if(sei==='start' || sei==='verwaltungSeite') zeigeSeite(kurs()?'uebersicht':'start');
+  else zeigeSeite(sei);
+  pruefeHinweis();
+}
 function zeigeStart(){
-  if(!FS_DATEI){ $('startDateiNeu').hidden=true; $('startDateiText').textContent='Hast du schon eine Datendatei (z. B. aus OneDrive oder iCloud Drive), öffne sie hier. Auf diesem Gerät speicherst du sie später über „Datei speichern“.'; }
-  $('startPaketInfo').textContent = (D.stamm ? `Geladen: Schuljahr ${D.stamm.schuljahr||'–'}, ${Object.keys(D.stamm.klassen).length} Klassen.` : '') + ((D.zusatz||[]).length ? ` Zusatzpakete: ${D.zusatz.map(z=>z.name).join(', ')}.` : '');
+  const s1=dateiEingerichtet(), s2=listenEingerichtet(), fertig=s1&&s2, zf=zugriffFehlt();
+  const anzahl=(s1?1:0)+(s2?1:0);
+  const marke=(ok,aktuell)=> ok ? '<span class="marke2 ok">✓ Erledigt</span>' : (aktuell ? '<span class="marke2 offen">Jetzt erledigen</span>' : '<span class="marke2 zu">Noch gesperrt</span>');
+  const nr=(n,ok,aktuell)=>`<span class="nr ${ok?'ok':(aktuell?'':'grau')}">${ok?'✓':n}</span>`;
+  const dn = dateiHandle ? esc(dateiHandle.name) : 'Notenliste_Daten.json';
+
+  // ---------- Schritt 1: Datendatei ----------
+  let h1;
+  if(FS_DATEI){
+    if(zf) h1=`<div class="achtung"><b>Erlaubnis nötig:</b> Deine Datendatei ist <b>${dn}</b>. Nach einem Neustart des Browsers musst du der Notenliste einmal erlauben, wieder in diese Datei zu speichern.</div>
+      <div class="zeile"><button class="primary grossKnopf" data-aktion="dateiErneutVerbinden">Zugriff auf „${dn}“ erlauben</button></div>
+      <ol class="anleitung"><li>Klicke auf den Knopf.</li><li>Der Browser fragt, ob die Notenliste die Datei bearbeiten darf: <b>erlauben</b>.</li><li>Bietet der Browser <b>„Bei jedem Besuch zulassen“</b> an, wähle das. Dann entfällt dieser Schritt künftig.</li></ol>
+      <p class="klein" style="margin-top:10px">Du willst eine andere Datei verwenden? <button class="link klein" data-aktion="dateiOeffnen">Andere Datendatei öffnen …</button></p>`;
+    else if(s1) h1=`<p>Alle Kurse und Noten werden ab jetzt <b>automatisch</b> in <b>${dn}</b> gespeichert. Du musst nie selbst speichern.</p>`;
+    else h1=`<p>Die Notenliste speichert alle Kurse und Noten in <b>einer einzigen Datei</b> mit der Endung <code>.json</code>. Jede Änderung wird sofort automatisch hineingeschrieben. Du musst nie selbst auf „Speichern“ klicken.</p>
+      <div class="tipp"><b>Wo soll die Datei liegen?</b> Am besten in deinem <b>OneDrive-Ordner</b> (z. B. <code>OneDrive › Notenliste</code>) oder in iCloud Drive. Dann ist sie gesichert und du kannst sie auch an einem anderen Gerät öffnen. Nicht in „Downloads“ und nicht auf einem fremden Rechner.</div>
+      <p style="margin-bottom:0"><b>Welcher Fall trifft auf dich zu?</b></p>
+      <div class="wahl">
+        <div><h4>A · Ich nutze die Notenliste zum ersten Mal</h4>
+          <p class="klein">Du legst eine neue, leere Datendatei an. Wähle den Ordner (z. B. OneDrive) und bestätige den Namen <code>Notenliste_Daten.json</code>.</p>
+          <button class="primary" data-aktion="dateiNeu">Neue Datendatei anlegen …</button></div>
+        <div><h4>B · Ich habe schon eine Datendatei</h4>
+          <p class="klein">Z. B. weil du die Notenliste schon an einem anderen Computer nutzt. Wähle deine <code>Notenliste_Daten.json</code> aus. Fragt der Browser, ob die Notenliste die Datei bearbeiten darf: <b>erlauben</b>.</p>
+          <button class="primary" data-aktion="dateiOeffnen">Vorhandene Datendatei öffnen …</button></div>
+      </div>
+      <p class="klein muted">Achtung, nicht verwechseln: Die Datendatei endet auf <code>.json</code>. Das Schuljahrespaket mit den Schülerlisten (<code>.nta</code>) kommt erst in Schritt 2.</p>`;
+  } else {
+    if(s1) h1=`<p>Die Datendatei ist eingerichtet. Auf diesem Gerät speichert die Notenliste deine Eingaben laufend im Browser. <b>In die Datendatei überträgst du sie von Hand:</b> Sobald etwas noch nicht in der Datei steht, erscheint oben ein Hinweis mit dem Knopf „Datei speichern“.</p>`;
+    else h1=`<p>Die Notenliste speichert alle Kurse und Noten in <b>einer Datendatei</b> mit der Endung <code>.json</code>, am besten in OneDrive oder iCloud Drive. Auf diesem Gerät (z. B. iPad im Browser) kann sie die Datei nicht selbst überschreiben. Deshalb speicherst du sie von Hand, die App erinnert dich daran.</p>
+      <p style="margin-bottom:0"><b>Welcher Fall trifft auf dich zu?</b></p>
+      <div class="wahl">
+        <div><h4>A · Ich nutze die Notenliste zum ersten Mal</h4>
+          <p class="klein">Tippe auf den Knopf, dann im Teilen-Menü auf <b>„In Dateien sichern“</b> und wähle OneDrive oder iCloud Drive.</p>
+          <button class="primary" data-aktion="dateiSpeichern">Datendatei speichern …</button></div>
+        <div><h4>B · Ich habe schon eine Datendatei</h4>
+          <p class="klein">Z. B. von deinem Computer. Wähle deine <code>Notenliste_Daten.json</code> in OneDrive bzw. iCloud Drive aus.</p>
+          <button class="primary" data-aktion="dateiOeffnen">Vorhandene Datendatei öffnen …</button></div>
+      </div>
+      <p class="klein muted">Achtung, nicht verwechseln: Die Datendatei endet auf <code>.json</code>. Das Schuljahrespaket mit den Schülerlisten (<code>.nta</code>) kommt erst in Schritt 2.</p>`;
+  }
+
+  // ---------- Schritt 2: Schülerlisten ----------
+  let h2;
+  if(s2){
+    const st=D.stamm;
+    h2=`<p>${st?`Schuljahrespaket geladen: Schuljahr <b>${esc(st.schuljahr||'–')}</b>, ${Object.keys(st.klassen).length} Klassen, ${Object.values(st.klassen).reduce((a,l)=>a+l.length,0)} Schüler.`:'Kein Schuljahrespaket, aber ein Zusatzpaket ist geladen.'}${(D.zusatz||[]).length?` Zusatzpakete: ${D.zusatz.map(z=>esc(z.name)).join(', ')}.`:''}</p>
+      <div class="zeile"><button class="klein" data-aktion="zusatzLaden">+ Zusatzpaket laden (z. B. Wahlpflichtfach, freiwillig) …</button></div>`;
+  } else {
+    h2=`<p>Die Klassenlisten bekommst du von der Schule als <b>Schuljahrespaket</b>: eine Datei mit der Endung <code>.nta</code>, z. B. <code>Schuljahr_2026-27.nta</code>. Meist ist sie mit einem <b>Passwort</b> geschützt, das du getrennt davon bekommst.</p>
+      ${s1?'':'<p class="klein"><b>Zuerst Schritt 1 erledigen.</b> Erst wenn die Datendatei feststeht, werden die Schülerlisten darin gespeichert.</p>'}
+      <div class="zeile"><button class="primary grossKnopf" data-aktion="paketLaden"${s1?'':' disabled'}>Schuljahrespaket (.nta) laden …</button></div>
+      <p class="klein" style="margin-top:10px">Kein Schuljahrespaket bekommen? Frag die Lehrkraft, die an deiner Schule die Notenliste betreut. Du bist diese Lehrkraft? <button class="link klein" data-aktion="zuVerwaltung"${s1?'':' disabled'}>Schülerlisten aus Excel importieren (Verwaltung)</button></p>`;
+  }
+
+  // ---------- Schritt 3: Kurs ----------
+  const h3 = fertig ? `<div class="schritt aktuell"><h3>${nr(3,false,true)}Ersten Kurs anlegen <span class="marke2 offen">Jetzt erledigen</span></h3>
+      <p>Wähle Klasse und Fach. Danach trägst du Leistungsnachweise und mündliche Noten ein. Weitere Kurse legst du später oben über die Kursauswahl an.</p>
+      <div class="zeile"><button class="primary grossKnopf" data-aktion="kursNeu">+ Kurs anlegen</button></div></div>` : '';
+
+  $('startInhalt').innerHTML = `
+    <h2 style="margin-bottom:4px">${fertig?'✓ Einrichtung abgeschlossen':'Notenliste einrichten'}</h2>
+    <div class="fortschritt"><span><b>${anzahl} von 2</b> Schritten erledigt</span><span class="balken"><i style="width:${anzahl*50}%"></i></span></div>
+    <p class="einleitung">${fertig?'Du kannst jetzt mit der Notenliste arbeiten.':'Bitte erledige die zwei Schritte der Reihe nach. <b>Erst danach</b> lassen sich Kurse anlegen und Noten eintragen. Bis dahin ist außer dieser Seite nur der Notenschlüssel-Rechner verfügbar.'}</p>
+    <div class="schritte">
+      <div class="schritt ${s1?'erledigt':'aktuell'}"><h3>${nr(1,s1,!s1)}Datendatei festlegen ${marke(s1,!s1)}</h3>${h1}</div>
+      <div class="schritt ${s2?'erledigt':(s1?'aktuell':'gesperrt')}"><h3>${nr(2,s2,s1&&!s2)}Schülerlisten laden ${marke(s2,s1&&!s2)}</h3>${h2}</div>
+      ${h3}
+    </div>
+    <p class="klein muted" style="margin-top:16px">🔒 Deine Daten bleiben bei dir: im Browser dieses Geräts und in deiner Datendatei. Die Notenliste überträgt nichts ins Internet.</p>`;
 }
 
 /* ================= Kurs anlegen / bearbeiten ================= */
@@ -2071,12 +2237,7 @@ function zeigeDaten(){
     <div class="zeile">${Object.entries(FORM_KAT).map(([kat,name])=>`<button class="klein" data-fkat="${kat}">${esc(name)}${D.formulierungen&&D.formulierungen[kat]?' ✎':''} …</button>`).join('')}</div>
   </div>
   <div class="karte"><h2>Lehrkraft</h2><div class="zeile"><label class="feld" style="max-width:320px;flex:1">Name (für Ausdrucke)<input id="lehrkraftFeld" value="${esc(D.lehrkraft||'')}"></label></div></div>
-  <div class="karte" id="verwaltung"><h2>Verwaltung: Schuljahrespaket erstellen</h2>
-    <p>Für die Lehrkraft, die die Schülerlisten für die Schule vorbereitet. Importiere die Excel-Datei mit allen Klassen und erstelle daraus ein Schuljahrespaket für das Kollegium.</p>
-    <p class="klein">Erkannt werden ein Blatt „Schule“ wie in der bisherigen Notenliste (Spalte A Klasse, C Nachname, D Vorname) oder eine Tabelle mit den Überschriften <code>Klasse</code>, <code>Nachname</code>, <code>Vorname</code>. Für ein Zusatzpaket (z. B. Wahlpflichtfach) zusätzlich eine Spalte <code>Wahlpflichtfach</code> oder <code>Gruppe</code>.</p>
-    <div class="zeile"><button class="primary" data-aktion="verwaltungImport">Schülerliste aus Excel importieren …</button></div>
-    <div id="verwaltungVorschau"></div>
-  </div>
+  <div class="karte"><h2>Verwaltung</h2><p>Für die Lehrkraft, die die Schülerlisten für die Schule vorbereitet: Schuljahrespaket aus einer Excel-Liste erstellen.</p><div class="zeile"><button data-aktion="zuVerwaltung">Zur Verwaltung …</button></div></div>
   <p class="muted klein">Notenliste · Daten bleiben auf diesem Gerät · <button class="link klein" data-aktion="allesLoeschen">Alle Daten auf diesem Gerät löschen …</button></p>`;
   $('daten').innerHTML=h;
   $('lehrkraftFeld').onchange=e=>{ D.lehrkraft=e.target.value.trim(); geaendert(); };
@@ -2086,7 +2247,6 @@ function zeigeDaten(){
     D.zusatz=(D.zusatz||[]).filter(z=>z.name!==n); geaendert(); zeigeDaten(); toast(`„${n}“ entfernt.`); });
   $('daten').querySelectorAll('[data-pkweg]').forEach(b=>b.onclick=()=>passkeyEntfernen(b.dataset.pkweg));
   $('daten').querySelectorAll('[data-fkat]').forEach(b=>b.onclick=async()=>{ await formulierungenBearbeiten(b.dataset.fkat); zeigeDaten(); });
-  if(verwaltungDaten) zeigeVerwaltungVorschau();
 }
 
 /* ---- Eigene Notenschlüssel ---- */
@@ -2176,7 +2336,7 @@ async function paketLaden(alsZusatz){
   if(neuGesamt) t+=`\n\n${neuGesamt} neue Schüler wurden in deine Kurse übernommen.`;
   if(fehlen.length) t+=`\n\nNicht mehr in der Klassenliste (bitte unter „Schüler“ prüfen und ggf. entfernen):\n– ${fehlen.slice(0,15).join('\n– ')}${fehlen.length>15?`\n… und ${fehlen.length-15} weitere`:''}`;
   await dialog(zusatz?'Zusatzpaket geladen':'Schuljahrespaket geladen', t);
-  fuelleKursWahl(); zeigeSeite(kurs() ? (A.seite==='start'?'uebersicht':A.seite) : (A.seite==='daten'?'daten':'start'));
+  fuelleKursWahl(); einrichtungWeiter();
 }
 
 /* ---- Verwaltung: Import aus Excel ---- */
@@ -2315,12 +2475,13 @@ const AKTIONEN = {
   kryptoEinrichten, kryptoPasswort, passkeyNeu, kryptoAus,
   paketLaden, kursNeu, ordnerWaehlen, ordnerFreigeben, dateiNeu, dateiOeffnen, dateiTrennen, kopieHerunterladen, dateiErneutVerbinden,
   dateiSpeichern: ()=>dateiSpeichernManuell(),
-  zuVerwaltung: ()=>{ zeigeSeite('daten'); setTimeout(()=>$('verwaltung').scrollIntoView({behavior:'smooth'}),50); },
+  zuVerwaltung: ()=>{ zeigeSeite('verwaltungSeite'); window.scrollTo(0,0); },
+  verwaltungZurueck: ()=>zeigeSeite(einrichtungFertig()?'daten':'start'),
   verwaltungImport, paketErstellen,
   zusatzLaden: ()=>paketLaden(true),
   paketSelbst: async ()=>{ const v=verwaltungDaten;
-    if(v.art==='zusatz'){ const name=($('pkName')&&$('pkName').value.trim())||'Wahlpflichtfach'; D.zusatz=(D.zusatz||[]).filter(z=>z.name!==name); D.zusatz.push({name, schuljahr:$('pkSchuljahr').value.trim(), erstellt:heuteISO(), klassen:verwaltungListen(v), bezeichnungen:(!v.gruppen&&v.bez)||undefined}); geaendert(); toast(`Zusatzpaket „${name}“ auf diesem Gerät übernommen.`); zeigeDaten(); return; }
-    D.stamm={schuljahr:$('pkSchuljahr').value.trim(), erstellt:heuteISO(), klassen:v.klassen}; geaendert(); toast('Klassen auf diesem Gerät übernommen.'); zeigeDaten(); },
+    if(v.art==='zusatz'){ const name=($('pkName')&&$('pkName').value.trim())||'Wahlpflichtfach'; D.zusatz=(D.zusatz||[]).filter(z=>z.name!==name); D.zusatz.push({name, schuljahr:$('pkSchuljahr').value.trim(), erstellt:heuteISO(), klassen:verwaltungListen(v), bezeichnungen:(!v.gruppen&&v.bez)||undefined}); geaendert(); toast(`Zusatzpaket „${name}“ auf diesem Gerät übernommen.`); einrichtungWeiter(); return; }
+    D.stamm={schuljahr:$('pkSchuljahr').value.trim(), erstellt:heuteISO(), klassen:v.klassen}; geaendert(); toast('Klassen auf diesem Gerät übernommen.'); einrichtungWeiter(); },
   schuelerNeu, schluesselNeu: ()=>schluesselBearbeiten(null),
   aufgabePlus: ()=>{ const n=kurs().nachweise.find(x=>x.id===A.nwId); n.aufgaben.push(null); geaendert(); zeigeNwEditor(); },
   aufgabeMinus: async ()=>{ const n=kurs().nachweise.find(x=>x.id===A.nwId); const i=n.aufgaben.length-1;
@@ -2346,7 +2507,10 @@ const AKTIONEN = {
   refLeerDrucken: ()=>drucken(refBogenHTML(kurs(),null),{hoch:true}),
   bogenAlleDrucken,
 };
-$('btnHinweisSichern').onclick=e=>{ const w=e.target.dataset.was; if(w==='verbinden') dateiErneutVerbinden(); else if(w==='neu') dateiNeu(); else dateiSpeichernManuell(); };
+function hinweisKnopf(e){ const w=e.target.dataset.was;
+  if(w==='verbinden') dateiErneutVerbinden(); else if(w==='neu') dateiNeu(); else if(w==='erneut') dateiWiederholen(false);
+  else if(w==='kopie') kopieHerunterladen(); else if(w==='oeffnen') dateiOeffnen(); else dateiSpeichernManuell(); }
+$('btnHinweisSichern').onclick=hinweisKnopf; $('btnHinweis2').onclick=hinweisKnopf;
 
 /* ================= Start ================= */
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
@@ -2355,14 +2519,15 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   }).catch(e=>console.warn('SW',e));
 }
 (async()=>{
-  try{ let g=await kvGet('daten'); const m=await kvGet('krypto'); if(m && m.id) g=await startEntsperren(m, g); if(g && g.version) D=Object.assign(LEER(), g); }catch(e){ dialog('Speicher nicht verfügbar', 'Dieser Browser erlaubt kein Speichern (z. B. privates Fenster). Noten gehen beim Schließen verloren.\n\n'+(e.message||e)); }
+  try{ let g=await kvGet('daten'); const m=await kvGet('krypto'); if(m && m.id) g=await startEntsperren(m, g); if(g && g.version) D=Object.assign(LEER(), g); }catch(e){ lokalFehler=String(e.message||e); dialog('Speicher nicht verfügbar', 'Dieser Browser erlaubt kein Speichern (z. B. privates Fenster). Noten gehen beim Schließen verloren.\n\n'+(e.message||e)); }
   try{ const h=await kvGet('ordner'); if(h && h.queryPermission) ordnerHandle=h; }catch(e){}
   try{ const h=await kvGet('datei'); if(h && h.nativ && NATIV){ const name=await nativ('info'); if(name) dateiHandle=nativHandle(name); } else if(h && h.queryPermission) dateiHandle=h; }catch(e){}
   if(D.aktKurs && !kurs()) D.aktKurs=D.kurse[0]?D.kurse[0].id:null;
   fuelleKursWahl();
+  if(dateiHandle){ try{ dateiOk = (await dateiHandle.queryPermission({mode:'readwrite'}))==='granted'; }catch(e){ dateiOk=false; } }
   zeigeSeite(kurs()?'uebersicht':'start');
-  setStatus(dateiHandle ? '' : (hatDaten(D)?'✓ Auf diesem Gerät gespeichert':''));
-  if(dateiHandle){ try{ dateiOk = (await dateiHandle.queryPermission({mode:'readwrite'}))==='granted'; }catch(e){ dateiOk=false; } if(dateiOk) await dateiAbgleich(); }
+  setStatus(dateiHandle ? '' : (hatDaten(D)&&!FS_DATEI?'✓ Auf diesem Gerät gespeichert':''));
+  if(dateiOk) await dateiAbgleich();
   pruefeHinweis();
 })();
 </script>
