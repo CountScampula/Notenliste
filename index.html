@@ -52,6 +52,14 @@ nav#tabs button.aktiv{background:var(--accent-soft);color:var(--accent);font-wei
 #hinweisLeiste .knoepfe{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
 #hinweisLeiste.fehler button.primary{background:var(--err);border-color:var(--err)}
 #status.fehler{color:var(--err);font-weight:600}
+#updateLeiste{display:none;background:var(--accent);color:#fff;padding:9px 18px;font-size:14px;gap:10px;align-items:center;flex-wrap:wrap}
+#updateLeiste.zeigen{display:flex}
+#updateLeiste button{margin-left:auto;background:#fff;color:var(--accent);border-color:#fff;font-weight:600}
+.neuerungen{max-height:55vh;overflow:auto;margin-top:4px}
+.neuerungen h4{margin:12px 0 4px;color:var(--accent)}
+.neuerungen h4 span{font-weight:400;color:var(--muted);font-size:13px}
+.neuerungen ul{margin:0;padding-left:20px}
+.neuerungen li{margin:3px 0}
 #hinweisLeiste.zeigen{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 main{padding:18px;max-width:1500px;margin:0 auto}
 .seite{display:none}
@@ -293,6 +301,7 @@ body.druckmodus #druck td.l,body.druckmodus #druck th.l{text-align:left}
   </nav>
   <span id="status"></span>
 </header>
+<div id="updateLeiste" role="status"><span>Eine neue Version der Notenliste ist bereit.</span><button class="klein" id="btnUpdate">Jetzt aktualisieren</button></div>
 <div id="hinweisLeiste" role="alert"><span id="hinweisText"></span><span class="knoepfe"><button class="klein primary" id="btnHinweisSichern">Jetzt sichern</button><button class="klein" id="btnHinweis2" hidden></button></span></div>
 
 <main>
@@ -1088,6 +1097,52 @@ function rechenKurs(k){
   return { hj:k.hj, mdl:k.mdl, nachweise:k.nachweise.filter(n=>n.typ!=='X').map(n=>({...n, schluessel:schluesselVon(n.schluessel)})) };
 }
 function rechenNw(n){ return {...n, schluessel:schluesselVon(n.schluessel)}; }
+
+/* ================= Neuerungen (Changelog) ================= */
+// Bei jeder neuen Version: APP_VERSION erhöhen (gleiche Zahl wie in sw.js) und oben einen Eintrag ergänzen.
+const APP_VERSION = 17;
+const NEUERUNGEN = [
+  {v:17, datum:'25.11.2026', punkte:[
+    'Nach jedem Update zeigt die Notenliste diese Übersicht der Neuerungen. Du findest sie jederzeit unter „Daten & Einstellungen“ ganz unten.',
+    'Liegt eine neue Version bereit, erscheint oben ein Hinweis mit dem Knopf „Jetzt aktualisieren“.']},
+  {v:16, datum:'25.11.2026', punkte:[
+    'Geführte Einrichtung in zwei Schritten: Datendatei festlegen, dann Schülerlisten laden. Bis dahin ist nur der Notenschlüssel-Rechner erreichbar.',
+    'Rote Warnleiste, wenn nicht in die Datendatei gespeichert werden kann (z. B. OneDrive hängt), mit automatischem neuen Versuch alle 30 Sekunden und Knopf für eine Sicherheitskopie.',
+    'Nachfrage beim Schließen, wenn noch Änderungen nicht in der Datei stehen.',
+    'Die Verwaltung (Schuljahrespaket aus Excel erstellen) ist jetzt eine eigene Seite.']},
+  {v:15, datum:'', punkte:['Gruppenreferate: Der Vortrag kann für jede Person einzeln bewertet werden.']},
+  {v:14, datum:'', punkte:['Referate: neues Feld „Fragen während des Referats“.']},
+  {v:13, datum:'', punkte:['Gruppenreferate mit gemeinsamer Bewertung.']},
+  {v:12, datum:'18.11.2026', punkte:['Referatsbogen: Das Kriterium „Ergebnissicherung“ entfällt, höchstens 76 statt 80 Punkte.']},
+  {v:11, datum:'18.11.2026', punkte:['Beim schnellen Eintragen erscheint nicht mehr fälschlich „Datei wurde woanders geändert“.']},
+  {v:10, datum:'17.11.2026', punkte:['Die Datendatei lässt sich verschlüsseln und mit Passwort, Passkey oder Sicherheitsschlüssel entsperren.']},
+];
+const lsGet = k => { try{ return localStorage.getItem(k); }catch(e){ return null; } };
+const lsSet = (k,v) => { try{ localStorage.setItem(k,v); }catch(e){} };
+function neuerungenHTML(ab){
+  return `<div class="neuerungen">${NEUERUNGEN.filter(n=>n.v>ab).map(n=>`<h4>Version ${n.v}${n.datum?` <span>· ${esc(n.datum)}</span>`:''}</h4><ul>${n.punkte.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>`).join('')}</div>`;
+}
+// nach einem Update einmal anzeigen; muss mit „Verstanden“ bestätigt werden
+async function zeigeNeuerungen(){
+  const gesehen=parseInt(lsGet('notenliste-version')||'',10);
+  if(isNaN(gesehen)){
+    // erster Start mit dieser Funktion: neue Nutzer sehen nichts, bisherige nur die aktuelle Version
+    if(!hatDaten(D)){ lsSet('notenliste-version', APP_VERSION); return; }
+  } else if(gesehen>=APP_VERSION) return;
+  const ab = isNaN(gesehen) ? APP_VERSION-1 : gesehen;
+  while(!(await dialog(`Neu in Version ${APP_VERSION}`, 'Die Notenliste wurde aktualisiert. Das hat sich geändert:', [{t:'Verstanden',w:true,p:true}], neuerungenHTML(ab)))){}
+  lsSet('notenliste-version', APP_VERSION);
+}
+async function alleNeuerungen(){ await dialog('Neuerungen der Notenliste', `Du verwendest Version ${APP_VERSION}.`, [{t:'Schließen',w:true,p:true}], neuerungenHTML(0)); }
+async function jetztAktualisieren(){
+  const b=$('btnUpdate'); b.disabled=true; b.textContent='Speichert …';
+  try{ if(dateiOk && D.geaendert!==D.dateiStand){ clearTimeout(dateiTimer); await dateiSchreiben(); } }catch(e){}
+  if(D.geaendert && D.geaendert!==D.dateiStand && !dateiOk && FS_DATEI){
+    b.disabled=false; b.textContent='Jetzt aktualisieren';
+    return dialog('Noch nicht gespeichert', 'Es gibt Änderungen, die noch nicht in der Datendatei stehen. Behebe zuerst den Hinweis in der Leiste oben, dann aktualisiere.');
+  }
+  location.reload();
+}
 
 /* ================= Navigation ================= */
 // Solange die Einrichtung nicht fertig ist, sind nur diese Seiten erreichbar
@@ -2238,7 +2293,7 @@ function zeigeDaten(){
   </div>
   <div class="karte"><h2>Lehrkraft</h2><div class="zeile"><label class="feld" style="max-width:320px;flex:1">Name (für Ausdrucke)<input id="lehrkraftFeld" value="${esc(D.lehrkraft||'')}"></label></div></div>
   <div class="karte"><h2>Verwaltung</h2><p>Für die Lehrkraft, die die Schülerlisten für die Schule vorbereitet: Schuljahrespaket aus einer Excel-Liste erstellen.</p><div class="zeile"><button data-aktion="zuVerwaltung">Zur Verwaltung …</button></div></div>
-  <p class="muted klein">Notenliste · Daten bleiben auf diesem Gerät · <button class="link klein" data-aktion="allesLoeschen">Alle Daten auf diesem Gerät löschen …</button></p>`;
+  <p class="muted klein">Notenliste Version ${APP_VERSION} · <button class="link klein" data-aktion="alleNeuerungen">Neuerungen anzeigen</button> · Daten bleiben auf diesem Gerät · <button class="link klein" data-aktion="allesLoeschen">Alle Daten auf diesem Gerät löschen …</button></p>`;
   $('daten').innerHTML=h;
   $('lehrkraftFeld').onchange=e=>{ D.lehrkraft=e.target.value.trim(); geaendert(); };
   $('daten').querySelectorAll('[data-schl]').forEach(b=>b.onclick=()=>schluesselBearbeiten(b.dataset.schl));
@@ -2505,17 +2560,20 @@ const AKTIONEN = {
   druckUebersicht, druckKlassenliste, druckNachweis, nsKopieren, nsDrucken,
   refEintragen: ()=>refEintragenKlick(), refLoeschen, refDrucken: ()=>{ const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(r) drucken(refBogenHTML(k,r),{hoch:true}); },
   refLeerDrucken: ()=>drucken(refBogenHTML(kurs(),null),{hoch:true}),
-  bogenAlleDrucken,
+  bogenAlleDrucken, alleNeuerungen,
 };
 function hinweisKnopf(e){ const w=e.target.dataset.was;
   if(w==='verbinden') dateiErneutVerbinden(); else if(w==='neu') dateiNeu(); else if(w==='erneut') dateiWiederholen(false);
   else if(w==='kopie') kopieHerunterladen(); else if(w==='oeffnen') dateiOeffnen(); else dateiSpeichernManuell(); }
 $('btnHinweisSichern').onclick=hinweisKnopf; $('btnHinweis2').onclick=hinweisKnopf;
+$('btnUpdate').onclick=jetztAktualisieren;
 
 /* ================= Start ================= */
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   navigator.serviceWorker.register('sw.js').then(reg=>{
-    reg.addEventListener('updatefound',()=>{ const w=reg.installing; w&&w.addEventListener('statechange',()=>{ if(w.state==='installed' && navigator.serviceWorker.controller) toast('Neue Version geladen – sie ist beim nächsten Start aktiv.'); }); });
+    reg.addEventListener('updatefound',()=>{ const w=reg.installing; w&&w.addEventListener('statechange',()=>{ if((w.state==='installed'||w.state==='activated') && navigator.serviceWorker.controller) $('updateLeiste').classList.add('zeigen'); }); });
+    // beim Zurückkehren in die App nach Updates schauen
+    document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') reg.update().catch(()=>{}); });
   }).catch(e=>console.warn('SW',e));
 }
 (async()=>{
@@ -2529,6 +2587,7 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   setStatus(dateiHandle ? '' : (hatDaten(D)&&!FS_DATEI?'✓ Auf diesem Gerät gespeichert':''));
   if(dateiOk) await dateiAbgleich();
   pruefeHinweis();
+  await zeigeNeuerungen();
 })();
 </script>
 </body>
