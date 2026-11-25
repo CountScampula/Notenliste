@@ -52,6 +52,13 @@ nav#tabs button.aktiv{background:var(--accent-soft);color:var(--accent);font-wei
 #hinweisLeiste .knoepfe{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
 #hinweisLeiste.fehler button.primary{background:var(--err);border-color:var(--err)}
 #status.fehler{color:var(--err);font-weight:600}
+.installBox{display:flex;gap:14px;align-items:flex-start;background:#fff;border:1px solid #bcd6d8;border-left:5px solid var(--accent);border-radius:12px;padding:14px 16px;margin:0 0 16px}
+.installBox .symbol{flex:none;width:44px;height:44px}
+.installBox h3{margin:0 0 4px;font-size:16px}
+.installBox p{margin:4px 0}
+.installBox ol{margin:6px 0 0;padding-left:20px;font-size:14px}
+.installBox ol li{margin:4px 0}
+.installBox .ico{display:inline-block;vertical-align:-4px;width:18px;height:18px;margin:0 2px}
 #updateLeiste{display:none;background:var(--accent);color:#fff;padding:9px 18px;font-size:14px;gap:10px;align-items:center;flex-wrap:wrap}
 #updateLeiste.zeigen{display:flex}
 #updateLeiste button{margin-left:auto;background:#fff;color:var(--accent);border-color:#fff;font-weight:600}
@@ -564,6 +571,52 @@ const KLEIN_K = { KA:'KA', Ex:'Ex' };
 const LEER = () => ({ version:1, lehrkraft:'', stamm:null, zusatz:[], kurse:[], schluessel:[], letzteSicherung:null, aktKurs:null, geaendert:null, dateiStand:null });
 let D = LEER();
 let A = { seite:'start', nwId:null, refId:null };
+
+/* ---- Als App installieren (Chrome/Edge: eigener Knopf; iPad/Safari: Anleitung) ---- */
+let installPrompt=null, appWurdeInstalliert=false;
+function istInstalliert(){ try{ return !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.datei) || navigator.standalone===true || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches; }catch(e){ return false; } }
+function geraeteArt(){
+  const ua=navigator.userAgent;
+  if(/iPad|iPhone|iPod/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1)) return 'ios';
+  if(/Firefox\//.test(ua)) return 'firefox';
+  if(/Edg\//.test(ua)) return 'edge';
+  if(/Chrome\/|Chromium\//.test(ua)) return 'chrome';
+  if(/Macintosh/.test(ua) && /Safari\//.test(ua)) return 'macsafari';
+  return 'andere';
+}
+function installNeuZeigen(){ try{ if(A.seite==='start') zeigeStart(); else if(A.seite==='daten') zeigeDaten(); }catch(e){} }
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); installPrompt=e; installNeuZeigen(); });
+window.addEventListener('appinstalled', ()=>{ installPrompt=null; appWurdeInstalliert=true; try{ toast('Die Notenliste ist installiert. Starte sie ab jetzt über ihr eigenes Symbol.'); }catch(e){} installNeuZeigen(); });
+async function appInstallieren(){
+  if(!installPrompt) return;
+  const p=installPrompt; installPrompt=null;
+  try{ await p.prompt(); const r=await p.userChoice; if(r && r.outcome!=='accepted') toast('Installation abgebrochen. Du kannst es jederzeit erneut versuchen.'); }catch(e){}
+  installNeuZeigen();
+}
+const ICO_TEILEN='<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Teilen"><path d="M8 7l4-4 4 4M12 3v13"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>';
+const ICO_PLUS='<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-label="Hinzufügen"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+const ICO_INSTALL='<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Installieren"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M12 8v6M9 11l3 3 3-3M8 21h8"/></svg>';
+const APP_SYMBOL='<svg class="symbol" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#1d5c63"/><rect x="13" y="12" width="38" height="42" rx="4" fill="#fff"/><path d="M13 22h38M13 32h38M13 42h38M26 12v42" stroke="#cfe3e3" stroke-width="2"/><circle cx="47" cy="47" r="9" fill="#e0a43a"/><path d="M42.8 47.2l2.9 2.9 5.4-5.6" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// Hinweis-Karte; leer, wenn schon installiert oder als lokale HTML-Datei geöffnet
+function installKarte(){
+  if(istInstalliert() || !/^https?:$/.test(location.protocol)) return '';
+  const art=geraeteArt(), kopf=t=>`<div class="installBox">${APP_SYMBOL}<div style="flex:1"><h3>${t}</h3>`, fuss='</div></div>';
+  if(appWurdeInstalliert) return kopf('✓ Notenliste ist installiert')+`<p>Du findest sie jetzt als eigenes Programm (Desktop, Dock bzw. Startmenü). Schließe diesen Browser-Tab und arbeite ab jetzt nur noch in der App.</p>`+fuss;
+  if(installPrompt) return kopf('Notenliste als App installieren')+`<p>Dann startet die Notenliste wie ein normales Programm über ein eigenes Symbol (Desktop, Dock bzw. Startmenü), in einem eigenen Fenster und auch ohne Internet. Updates kommen weiterhin automatisch.</p>
+    <div class="zeile" style="margin-top:8px"><button class="primary" data-aktion="appInstallieren">Jetzt installieren</button></div>
+    <p class="klein muted">Es öffnet sich ein Fenster des Browsers. Bestätige dort mit „Installieren“.</p>`+fuss;
+  if(art==='ios') return kopf('Notenliste als App auf dem iPad einrichten')+`<ol>
+      <li>Tippe in Safari auf ${ICO_TEILEN} <b>Teilen</b> (oben rechts neben der Adresse bzw. unten in der Leiste).</li>
+      <li>Wähle ${ICO_PLUS} <b>„Zum Home-Bildschirm“</b>. Eventuell musst du dafür in der Liste etwas nach unten wischen.</li>
+      <li>Tippe oben rechts auf <b>„Hinzufügen“</b>.</li>
+      <li>Starte die Notenliste ab jetzt <b>nur noch über das neue Symbol</b> auf dem Home-Bildschirm, nicht über Safari. Safari und die App haben getrennte Speicher.</li></ol>
+    <p class="klein muted">Am besten richtest du die App ein, <b>bevor</b> du die Einrichtung unten erledigst, und machst die Einrichtung dann in der App.</p>`+fuss;
+  if(art==='macsafari') return kopf('Notenliste als App einrichten')+`<p>Safari kann die Notenliste über <b>Ablage → „Zum Dock hinzufügen …“</b> als App einrichten. Automatisch in die Datendatei speichern können aber nur <b>Chrome und Edge</b>. Öffne diese Adresse deshalb am besten dort und installiere sie von dort aus.</p>`+fuss;
+  if(art==='firefox') return kopf('Besser in Chrome oder Edge öffnen')+`<p>Firefox kann die Notenliste weder als App installieren noch automatisch in die Datendatei speichern. Öffne diese Adresse am besten in <b>Chrome</b> oder <b>Edge</b>.</p>`+fuss;
+  if(art==='chrome' || art==='edge') return kopf('Notenliste als App installieren')+`<p>Klicke rechts in der Adressleiste auf das Symbol ${ICO_INSTALL} <b>„App installieren“</b> oder wähle im Menü des Browsers (${art==='edge'?'…':'⋮'}) den Eintrag zum Installieren als App. Danach startet die Notenliste über ein eigenes Symbol, auch ohne Internet.</p>
+    <p class="klein muted">Ist sie bereits installiert, öffne sie lieber über ihr Symbol statt hier im Browser.</p>`+fuss;
+  return '';
+}
 
 function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('notenliste',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
 async function kvSet(k,v){ if(k==='daten' && v && KR.id){ if(!KR.key) throw new Error('Die Notenliste ist gesperrt.'); v=await umschlag(v); } return kvPut(k,v); }
@@ -1100,10 +1153,13 @@ function rechenNw(n){ return {...n, schluessel:schluesselVon(n.schluessel)}; }
 
 /* ================= Neuerungen (Changelog) ================= */
 // Bei jeder neuen Version: APP_VERSION erhöhen (gleiche Zahl wie in sw.js) und oben einen Eintrag ergänzen.
-const APP_VERSION = 19;
+const APP_VERSION = 20;
 // Anzeige als 0.x, solange es keine endgültige Version 1.0 gibt
 const versionText = v => '0.'+v;
 const NEUERUNGEN = [
+  {v:20, datum:'25.11.2026', punkte:[
+    'Knopf „Jetzt installieren“ auf der Startseite: In Chrome und Edge wird die Notenliste mit einem Klick zur eigenen App mit Symbol.',
+    'Auf dem iPad und in Safari erscheint stattdessen eine Schritt-für-Schritt-Anleitung. In der installierten App verschwindet der Hinweis.']},
   {v:19, datum:'25.11.2026', punkte:[
     'Leistungsnachweise: Die Bewertungsart „Wortgutachten“ heißt jetzt „Nur Endnote eintragen“.',
     'Bleibt die App lange offen, sieht sie einmal pro Stunde nach Updates. Gibt es eins, erscheint oben die Leiste „Jetzt aktualisieren“.']},
@@ -1267,7 +1323,7 @@ function zeigeStart(){
       <p>Wähle Klasse und Fach. Danach trägst du Leistungsnachweise und mündliche Noten ein. Weitere Kurse legst du später oben über die Kursauswahl an.</p>
       <div class="zeile"><button class="primary grossKnopf" data-aktion="kursNeu">+ Kurs anlegen</button></div></div>` : '';
 
-  $('startInhalt').innerHTML = `
+  $('startInhalt').innerHTML = installKarte() + `
     <h2 style="margin-bottom:4px">${fertig?'✓ Einrichtung abgeschlossen':'Notenliste einrichten'}</h2>
     <div class="fortschritt"><span><b>${anzahl} von 2</b> Schritten erledigt</span><span class="balken"><i style="width:${anzahl*50}%"></i></span></div>
     <p class="einleitung">${fertig?'Du kannst jetzt mit der Notenliste arbeiten.':'Bitte erledige die zwei Schritte der Reihe nach. <b>Erst danach</b> lassen sich Kurse anlegen und Noten eintragen. Bis dahin ist außer dieser Seite nur der Notenschlüssel-Rechner verfügbar.'}</p>
@@ -2274,7 +2330,7 @@ function nsDrucken(){
 function zeigeDaten(){
   const fs='showDirectoryPicker' in window;
   const st=D.stamm;
-  let h=`<div class="karte"><h2>Datendatei</h2>
+  let h=installKarte()+`<div class="karte"><h2>Datendatei</h2>
     ${FS_DATEI ? (dateiHandle ? `<p>Alle Daten werden automatisch in <b>${esc(dateiHandle.name)}</b> gespeichert. ${dateiOk?`<span style="color:var(--ok)">✓ verbunden</span>`:'<b style="color:var(--warn)">Zugriff nicht erlaubt</b>'}</p>
         <div class="zeile">${dateiOk?'':'<button class="primary" data-aktion="dateiErneutVerbinden">Zugriff erlauben</button>'}<button data-aktion="dateiOeffnen">Andere Datei öffnen …</button><button data-aktion="dateiNeu">Neue Datei anlegen …</button><button class="link klein" data-aktion="dateiTrennen">Datei trennen</button></div>
         <p class="klein">Die Datei kann in OneDrive, iCloud Drive, Dropbox oder auf der NAS liegen. Öffnest du die Notenliste an einem anderen Computer mit derselben Datei, lädt sie automatisch den neuesten Stand. Wurde die Datei zwischendurch woanders geändert, fragt die App nach, bevor etwas überschrieben wird.</p>`
@@ -2573,7 +2629,7 @@ const AKTIONEN = {
   druckUebersicht, druckKlassenliste, druckNachweis, nsKopieren, nsDrucken,
   refEintragen: ()=>refEintragenKlick(), refLoeschen, refDrucken: ()=>{ const k=kurs(), r=refs(k).find(x=>x.id===A.refId); if(r) drucken(refBogenHTML(k,r),{hoch:true}); },
   refLeerDrucken: ()=>drucken(refBogenHTML(kurs(),null),{hoch:true}),
-  bogenAlleDrucken, alleNeuerungen,
+  bogenAlleDrucken, alleNeuerungen, appInstallieren,
 };
 function hinweisKnopf(e){ const w=e.target.dataset.was;
   if(w==='verbinden') dateiErneutVerbinden(); else if(w==='neu') dateiNeu(); else if(w==='erneut') dateiWiederholen(false);
