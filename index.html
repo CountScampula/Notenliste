@@ -1100,10 +1100,13 @@ function rechenNw(n){ return {...n, schluessel:schluesselVon(n.schluessel)}; }
 
 /* ================= Neuerungen (Changelog) ================= */
 // Bei jeder neuen Version: APP_VERSION erhöhen (gleiche Zahl wie in sw.js) und oben einen Eintrag ergänzen.
-const APP_VERSION = 18;
+const APP_VERSION = 19;
 // Anzeige als 0.x, solange es keine endgültige Version 1.0 gibt
 const versionText = v => '0.'+v;
 const NEUERUNGEN = [
+  {v:19, datum:'25.11.2026', punkte:[
+    'Leistungsnachweise: Die Bewertungsart „Wortgutachten“ heißt jetzt „Nur Endnote eintragen“.',
+    'Bleibt die App lange offen, sieht sie einmal pro Stunde nach Updates. Gibt es eins, erscheint oben die Leiste „Jetzt aktualisieren“.']},
   {v:18, datum:'25.11.2026', punkte:[
     'Updates gelten jetzt schon beim nächsten Start der App. Bisher musste man sie zweimal neu starten.',
     'Ohne Internet startet die App wie gewohnt mit der zuletzt geladenen Version.']},
@@ -1464,7 +1467,7 @@ function zeigeNwEditor(){
      <label class="feld">Bezeichnung<input data-nwf="titel" value="${esc(n.titel)}" placeholder="${esc(nwTitel(k,{...n,titel:''}))}"></label>
      <label class="feld">Geschrieben am<input type="date" data-nwf="geschrieben" value="${esc(n.geschrieben)}"></label>
      <label class="feld">Zurückgegeben am<input type="date" data-nwf="zurueck" value="${esc(n.zurueck)}"></label>
-     <label class="feld">Bewertung<select data-nwf="modus"><option value="aufgaben"${n.modus==='aufgaben'?' selected':''}>Bewertungseinheiten (BE)</option><option value="direkt"${n.modus==='direkt'?' selected':''}>Wortgutachten</option><option value="bogen"${n.modus==='bogen'?' selected':''}>Bewertungsbogen</option></select></label>
+     <label class="feld">Bewertung<select data-nwf="modus"><option value="aufgaben"${n.modus==='aufgaben'?' selected':''}>Bewertungseinheiten (BE)</option><option value="direkt"${n.modus==='direkt'?' selected':''}>Nur Endnote eintragen</option><option value="bogen"${n.modus==='bogen'?' selected':''}>Bewertungsbogen</option></select></label>
      ${n.modus==='aufgaben'?`<label class="feld">Notenschlüssel<select data-nwf="schluessel">${schl}</select></label>`:''}
    </div>`;
   if(n.modus==='aufgaben'){
@@ -1473,7 +1476,7 @@ function zeigeNwEditor(){
       ${!(be>0)?'<span class="muted klein">Trage zuerst in der grauen Zeile die BE pro Aufgabe ein.</span>':''}</div>`;
   }
   if(n.modus==='bogen'){ bogenInit(n); h+=bogenEinstellungenHTML(n)+`</div>`+bogenTabelleHTML(k,n); ed.innerHTML=h.replace('data-aktion="druckNachweis">Drucken</button>','data-aktion="druckNachweis">Liste drucken</button><button class="klein" data-aktion="bogenAlleDrucken">Alle Bögen drucken</button>'); zeigeNwSeite(); return; }
-  if(n.modus==='direkt') h+=`<p class="klein" style="margin:12px 0 0">Bewertung mit Wortgutachten: Trage pro Schüler nur die Gesamtnote in Notenpunkten (0–15) ein.</p>`;
+  if(n.modus==='direkt') h+=`<p class="klein" style="margin:12px 0 0">Nur Endnote eintragen: Trage pro Schüler nur die Gesamtnote in Notenpunkten (0–15) ein.</p>`;
   h+=`</div><div id="nwInhalt"${n.modus==='direkt'?' style="grid-template-columns:1fr"':''}><div class="tabWrap"><table class="raster" id="tabNw"><thead><tr><th class="name">Name</th>`;
   if(n.modus==='aufgaben'){
     n.aufgaben.forEach((b,i)=>h+=`<th>A${i+1}</th>`);
@@ -2519,7 +2522,7 @@ function druckKlassenliste(){
 function druckNachweis(){
   const k=kurs(), n=k.nachweise.find(x=>x.id===A.nwId); if(!n) return;
   const RN=rechenNw(n), sch=aktiveSchueler(k), sp=C.notenspiegel(RN, sch.map(s=>s.id));
-  let h=druckKopf(nwTitel(k,n))+`<div class="sub">${n.geschrieben?'Geschrieben am '+datumText(n.geschrieben):''}${n.zurueck?' · zurückgegeben am '+datumText(n.zurueck):''} ${n.modus==='aufgaben'?` · Notenschlüssel ${esc(RN.schluessel.name)} · ${fmt(C.gesamtBE(RN))} BE`:(n.modus==='bogen'?` · Bewertungsbogen, Gewichtung ${n.bogen.gew.slice(0,n.bogen.anz).map(fmt).join(' / ')} %`:' · Bewertung mit Wortgutachten')}</div>`;
+  let h=druckKopf(nwTitel(k,n))+`<div class="sub">${n.geschrieben?'Geschrieben am '+datumText(n.geschrieben):''}${n.zurueck?' · zurückgegeben am '+datumText(n.zurueck):''} ${n.modus==='aufgaben'?` · Notenschlüssel ${esc(RN.schluessel.name)} · ${fmt(C.gesamtBE(RN))} BE`:(n.modus==='bogen'?` · Bewertungsbogen, Gewichtung ${n.bogen.gew.slice(0,n.bogen.anz).map(fmt).join(' / ')} %`:' · nur Endnote eingetragen')}</div>`;
   if(n.modus==='bogen'){
     h+=`<table><thead><tr><th>Nr.</th><th class="l">Name</th>${Array.from({length:n.bogen.anz},(_,a)=>`<th>A${a+1}</th>`).join('')}<th>Erstkorr.</th>${n.bogen.zweit?'<th>Zweitkorr.</th>':''}<th>Punkte</th></tr></thead><tbody>`;
     sch.forEach((s,i)=>{ const e=C.bogenKorrektor(n,s.id,'e'), z=n.bogen.zweit?C.bogenKorrektor(n,s.id,'z'):null, p=C.ergebnis(RN,s.id).punkte;
@@ -2584,6 +2587,8 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     reg.addEventListener('updatefound',()=>{ const w=reg.installing; w&&w.addEventListener('statechange',()=>{ if(w.state==='activated' && navigator.serviceWorker.controller) pruefeNeueVersion(); }); });
     // beim Zurückkehren in die App nach Updates schauen
     document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') reg.update().catch(()=>{}); });
+    // solange die App offen ist: einmal pro Stunde nachsehen
+    setInterval(()=>{ if(document.visibilityState==='visible' && navigator.onLine!==false) reg.update().catch(()=>{}); }, 60*60*1000);
   }).catch(e=>console.warn('SW',e));
 }
 (async()=>{
