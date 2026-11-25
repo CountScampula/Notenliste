@@ -1101,6 +1101,8 @@ function rechenNw(n){ return {...n, schluessel:schluesselVon(n.schluessel)}; }
 /* ================= Neuerungen (Changelog) ================= */
 // Bei jeder neuen Version: APP_VERSION erhöhen (gleiche Zahl wie in sw.js) und oben einen Eintrag ergänzen.
 const APP_VERSION = 17;
+// Anzeige als 0.x, solange es keine endgültige Version 1.0 gibt
+const versionText = v => '0.'+v;
 const NEUERUNGEN = [
   {v:17, datum:'25.11.2026', punkte:[
     'Nach jedem Update zeigt die Notenliste diese Übersicht der Neuerungen. Du findest sie jederzeit unter „Daten & Einstellungen“ ganz unten.',
@@ -1120,7 +1122,7 @@ const NEUERUNGEN = [
 const lsGet = k => { try{ return localStorage.getItem(k); }catch(e){ return null; } };
 const lsSet = (k,v) => { try{ localStorage.setItem(k,v); }catch(e){} };
 function neuerungenHTML(ab){
-  return `<div class="neuerungen">${NEUERUNGEN.filter(n=>n.v>ab).map(n=>`<h4>Version ${n.v}${n.datum?` <span>· ${esc(n.datum)}</span>`:''}</h4><ul>${n.punkte.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>`).join('')}</div>`;
+  return `<div class="neuerungen">${NEUERUNGEN.filter(n=>n.v>ab).map(n=>`<h4>Version ${versionText(n.v)}${n.datum?` <span>· ${esc(n.datum)}</span>`:''}</h4><ul>${n.punkte.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>`).join('')}</div>`;
 }
 // nach einem Update einmal anzeigen; muss mit „Verstanden“ bestätigt werden
 async function zeigeNeuerungen(){
@@ -1130,10 +1132,10 @@ async function zeigeNeuerungen(){
     if(!hatDaten(D)){ lsSet('notenliste-version', APP_VERSION); return; }
   } else if(gesehen>=APP_VERSION) return;
   const ab = isNaN(gesehen) ? APP_VERSION-1 : gesehen;
-  while(!(await dialog(`Neu in Version ${APP_VERSION}`, 'Die Notenliste wurde aktualisiert. Das hat sich geändert:', [{t:'Verstanden',w:true,p:true}], neuerungenHTML(ab)))){}
+  while(!(await dialog(`Neu in Version ${versionText(APP_VERSION)}`, 'Die Notenliste wurde aktualisiert. Das hat sich geändert:', [{t:'Verstanden',w:true,p:true}], neuerungenHTML(ab)))){}
   lsSet('notenliste-version', APP_VERSION);
 }
-async function alleNeuerungen(){ await dialog('Neuerungen der Notenliste', `Du verwendest Version ${APP_VERSION}.`, [{t:'Schließen',w:true,p:true}], neuerungenHTML(0)); }
+async function alleNeuerungen(){ await dialog('Neuerungen der Notenliste', `Du verwendest Version ${versionText(APP_VERSION)}.`, [{t:'Schließen',w:true,p:true}], neuerungenHTML(0)); }
 async function jetztAktualisieren(){
   const b=$('btnUpdate'); b.disabled=true; b.textContent='Speichert …';
   try{ if(dateiOk && D.geaendert!==D.dateiStand){ clearTimeout(dateiTimer); await dateiSchreiben(); } }catch(e){}
@@ -2293,7 +2295,7 @@ function zeigeDaten(){
   </div>
   <div class="karte"><h2>Lehrkraft</h2><div class="zeile"><label class="feld" style="max-width:320px;flex:1">Name (für Ausdrucke)<input id="lehrkraftFeld" value="${esc(D.lehrkraft||'')}"></label></div></div>
   <div class="karte"><h2>Verwaltung</h2><p>Für die Lehrkraft, die die Schülerlisten für die Schule vorbereitet: Schuljahrespaket aus einer Excel-Liste erstellen.</p><div class="zeile"><button data-aktion="zuVerwaltung">Zur Verwaltung …</button></div></div>
-  <p class="muted klein">Notenliste Version ${APP_VERSION} · <button class="link klein" data-aktion="alleNeuerungen">Neuerungen anzeigen</button> · Daten bleiben auf diesem Gerät · <button class="link klein" data-aktion="allesLoeschen">Alle Daten auf diesem Gerät löschen …</button></p>`;
+  <p class="muted klein">Notenliste Version ${versionText(APP_VERSION)} · <button class="link klein" data-aktion="alleNeuerungen">Neuerungen anzeigen</button> · Daten bleiben auf diesem Gerät · <button class="link klein" data-aktion="allesLoeschen">Alle Daten auf diesem Gerät löschen …</button></p>`;
   $('daten').innerHTML=h;
   $('lehrkraftFeld').onchange=e=>{ D.lehrkraft=e.target.value.trim(); geaendert(); };
   $('daten').querySelectorAll('[data-schl]').forEach(b=>b.onclick=()=>schluesselBearbeiten(b.dataset.schl));
