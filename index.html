@@ -1100,10 +1100,13 @@ function rechenNw(n){ return {...n, schluessel:schluesselVon(n.schluessel)}; }
 
 /* ================= Neuerungen (Changelog) ================= */
 // Bei jeder neuen Version: APP_VERSION erhöhen (gleiche Zahl wie in sw.js) und oben einen Eintrag ergänzen.
-const APP_VERSION = 17;
+const APP_VERSION = 18;
 // Anzeige als 0.x, solange es keine endgültige Version 1.0 gibt
 const versionText = v => '0.'+v;
 const NEUERUNGEN = [
+  {v:18, datum:'25.11.2026', punkte:[
+    'Updates gelten jetzt schon beim nächsten Start der App. Bisher musste man sie zweimal neu starten.',
+    'Ohne Internet startet die App wie gewohnt mit der zuletzt geladenen Version.']},
   {v:17, datum:'25.11.2026', punkte:[
     'Nach jedem Update zeigt die Notenliste diese Übersicht der Neuerungen. Du findest sie jederzeit unter „Daten & Einstellungen“ ganz unten.',
     'Liegt eine neue Version bereit, erscheint oben ein Hinweis mit dem Knopf „Jetzt aktualisieren“.']},
@@ -1136,6 +1139,11 @@ async function zeigeNeuerungen(){
   lsSet('notenliste-version', APP_VERSION);
 }
 async function alleNeuerungen(){ await dialog('Neuerungen der Notenliste', `Du verwendest Version ${versionText(APP_VERSION)}.`, [{t:'Schließen',w:true,p:true}], neuerungenHTML(0)); }
+// Leiste „neue Version bereit“ nur, wenn auf dem Server wirklich eine neuere Version liegt
+async function pruefeNeueVersion(){
+  try{ const t=await (await fetch('./index.html',{cache:'no-cache'})).text(); const m=t.match(/const APP_VERSION = (\d+);/);
+    if(m && +m[1]>APP_VERSION) $('updateLeiste').classList.add('zeigen'); }catch(e){}
+}
 async function jetztAktualisieren(){
   const b=$('btnUpdate'); b.disabled=true; b.textContent='Speichert …';
   try{ if(dateiOk && D.geaendert!==D.dateiStand){ clearTimeout(dateiTimer); await dateiSchreiben(); } }catch(e){}
@@ -2573,7 +2581,7 @@ $('btnUpdate').onclick=jetztAktualisieren;
 /* ================= Start ================= */
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   navigator.serviceWorker.register('sw.js').then(reg=>{
-    reg.addEventListener('updatefound',()=>{ const w=reg.installing; w&&w.addEventListener('statechange',()=>{ if((w.state==='installed'||w.state==='activated') && navigator.serviceWorker.controller) $('updateLeiste').classList.add('zeigen'); }); });
+    reg.addEventListener('updatefound',()=>{ const w=reg.installing; w&&w.addEventListener('statechange',()=>{ if(w.state==='activated' && navigator.serviceWorker.controller) pruefeNeueVersion(); }); });
     // beim Zurückkehren in die App nach Updates schauen
     document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') reg.update().catch(()=>{}); });
   }).catch(e=>console.warn('SW',e));
