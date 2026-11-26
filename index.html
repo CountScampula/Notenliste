@@ -1011,7 +1011,15 @@ async function dateiOeffnen(){
   try{ const [h]=await window.showOpenFilePicker({types:JSON_TYPEN, id:'notenliste', multiple:false}); if(D.dateiStand && dateiHandle && !(await dateiHandle.isSameEntry(h))) D.dateiStand=null; if(!dateiHandle) D.dateiStand=null; await dateiVerbinden(h, false); }
   catch(e){ if(e.name!=='AbortError') dialog('Datei konnte nicht geöffnet werden', String(e.message||e)); }
 }
-async function dateiErneutVerbinden(){ if(dateiHandle) await dateiVerbinden(dateiHandle, false); }
+async function dateiErneutVerbinden(){
+  // Beide Erlaubnisse direkt nach dem Klick anfragen (der Browser erlaubt das nur kurz danach):
+  // zuerst die Datendatei (wichtiger), dann den Sicherungsordner. Klappt der Ordner nicht, bleibt die orange Leiste.
+  if(dateiHandle){ try{ if((await dateiHandle.queryPermission({mode:'readwrite'}))!=='granted') await dateiHandle.requestPermission({mode:'readwrite'}); }catch(e){} }
+  await ordnerPruefen();
+  if(ordnerHandle && !ordnerOk){ try{ ordnerOk=(await ordnerHandle.requestPermission({mode:'readwrite'}))==='granted'; }catch(e){} }
+  if(dateiHandle) await dateiVerbinden(dateiHandle, false);
+  if(ordnerHandle && ordnerOk) ordnerSichern();
+}
 async function dateiTrennen(){
   if(!(await frage('Datei trennen?', `Die App speichert dann nicht mehr in „${dateiHandle.name}“. Die Datei selbst bleibt erhalten.\n\nDanach musst du in der Einrichtung wieder eine Datendatei auswählen, bevor du weiterarbeiten kannst.`, 'Trennen', 'Abbrechen', true))) return;
   if(NATIV){ try{ await nativ('trennen'); }catch(e){} }
@@ -1073,25 +1081,36 @@ function download(name, inhalt, typ){
 async function kopieHerunterladen(){ download(`Notenliste_Sicherung_${heuteISO()}.json`, await datenDateiText()); if(!dateiOk){ D.letzteSicherung=new Date().toISOString(); await kvSet('daten',D); pruefeHinweis(); } toast('Kopie wird heruntergeladen.'); }
 
 /* ---- zusätzliche tägliche Sicherungen in einen Ordner (Chrome/Edge) ---- */
-let ordnerHandle=null;
+let ordnerHandle=null, ordnerOk=false, ordnerFehler=null;
+// Zeitpunkt der letzten erfolgreichen täglichen Sicherung (pro Gerät)
+const ordnerStand = () => lsGet('notenliste-ordner-sicherung');
+async function ordnerPruefen(){
+  if(!ordnerHandle){ ordnerOk=false; return; }
+  try{ ordnerOk=(await ordnerHandle.queryPermission({mode:'readwrite'}))==='granted'; }catch(e){ ordnerOk=false; }
+}
 async function ordnerSichern(){
   if(!ordnerHandle) return;
   try{
-    if((await ordnerHandle.queryPermission({mode:'readwrite'}))!=='granted') return;
+    if((await ordnerHandle.queryPermission({mode:'readwrite'}))!=='granted'){ if(ordnerOk){ ordnerOk=false; pruefeHinweis(); } return; }
+    ordnerOk=true;
     const s=await ordnerHandle.getDirectoryHandle('Sicherungen',{create:true});
     const h=await s.getFileHandle(`Notenliste_${heuteISO()}.json`,{create:true}); const text=await datenDateiText(); const w=await h.createWritable(); await w.write(text); await w.close();
     const alle=[]; for await (const [n,x] of s.entries()) if(x.kind==='file' && /^Notenliste_\d{4}-\d\d-\d\d\.json$/.test(n)) alle.push(n);
     alle.sort(); while(alle.length>60) await s.removeEntry(alle.shift());
-  }catch(e){ console.warn('Ordnersicherung', e); }
+    lsSet('notenliste-ordner-sicherung', new Date().toISOString());
+    if(ordnerFehler){ ordnerFehler=null; toast('Tägliche Sicherungen laufen wieder.'); }
+    pruefeHinweis();
+  }catch(e){ console.warn('Ordnersicherung', e); ordnerFehler=String(e.message||e); pruefeHinweis(); }
 }
 async function ordnerWaehlen(){
-  try{ const h=await window.showDirectoryPicker({id:'notenliste-sicherung', mode:'readwrite'}); ordnerHandle=h; await kvSet('ordner',h); await ordnerSichern(); toast('Tägliche Sicherungen eingerichtet.'); zeigeDaten(); }
+  try{ const h=await window.showDirectoryPicker({id:'notenliste-sicherung', mode:'readwrite'}); ordnerHandle=h; ordnerOk=true; ordnerFehler=null; await kvSet('ordner',h); await ordnerSichern(); toast('Tägliche Sicherungen eingerichtet.'); zeigeDaten(); }
   catch(e){ if(e.name!=='AbortError') dialog('Ordner nicht verfügbar', String(e.message||e)); }
 }
 async function ordnerFreigeben(){
   if(!ordnerHandle) return;
-  try{ if((await ordnerHandle.requestPermission({mode:'readwrite'}))==='granted'){ await ordnerSichern(); toast('Tägliche Sicherungen aktiv.'); } }catch(e){}
-  zeigeDaten();
+  ordnerFehler=null;
+  try{ if((await ordnerHandle.requestPermission({mode:'readwrite'}))==='granted'){ ordnerOk=true; await ordnerSichern(); toast('Tägliche Sicherungen aktiv.'); } }catch(e){}
+  if(A.seite==='daten') zeigeDaten(); pruefeHinweis();
 }
 
 function pruefeHinweis(){
@@ -1112,6 +1131,12 @@ function pruefeHinweis(){
     if(f.art==='gesperrt') return zeige('fehler', `<b>⚠ ${name} ist verschlüsselt und noch nicht entsperrt.</b> Bis du sie entsperrst, wird nichts in die Datei gespeichert.`, ['Jetzt entsperren','erneut'], kopie);
     if(f.art==='unlesbar') return zeige('fehler', `<b>⚠ ${name} enthält keine Daten der Notenliste.</b> Vermutlich wurde die falsche Datei gewählt. Es wird nichts hineingeschrieben.<span class="detail">${esc(f.info)}</span>`, ['Richtige Datendatei wählen …','oeffnen'], kopie);
     if(f.art==='konflikt') return zeige('warn', `<b>⚠ ${name} wurde an einem anderen Gerät geändert.</b> Entscheide, welcher Stand gelten soll. Bis dahin wird nichts in die Datei gespeichert.`, ['Jetzt entscheiden','erneut'], kopie);
+  }
+  // tägliche Sicherungen: Erlaubnis fehlt, Fehler, oder Änderungen seit über einem Tag ohne Sicherung
+  if(ordnerHandle && einrichtungFertig() && !zugriffFehlt()){
+    const stand=ordnerStand(), alt = D.geaendert && (!stand || Date.parse(D.geaendert)-Date.parse(stand) > 24*3600*1000);
+    if(!ordnerOk) return zeige('warn', `<b>Tägliche Sicherungen pausiert.</b> Nach dem Neustart des Browsers braucht die Notenliste wieder deine Erlaubnis für den Ordner „${esc(ordnerHandle.name)}“.${stand?`<span class="detail">Letzte Sicherung: ${zeitTxt(stand)}.</span>`:''}`, ['Sicherungen fortsetzen','ordner']);
+    if(ordnerFehler || alt) return zeige('warn', `<b>Die tägliche Sicherung hat seit über einem Tag nicht geklappt.</b> Prüfe, ob der Ordner „${esc(ordnerHandle.name)}“ noch erreichbar ist.<span class="detail">${stand?'Letzte Sicherung: '+zeitTxt(stand)+'.':'Noch keine Sicherung.'}${ordnerFehler?' Technische Meldung: '+esc(ordnerFehler):''}</span>`, ['Erneut versuchen','ordner'], ['Anderen Ordner wählen …','ordnerNeu']);
   }
   if(zugriffFehlt() && A.seite!=='start') return zeige('warn', `<b>Die Notenliste braucht deine Erlaubnis, um in ${name} zu speichern.</b> Das ist nach jedem Neustart des Browsers einmal nötig.`, ['Zugriff erlauben','verbinden']);
   if(!FS_DATEI && D.dateiStand && hatDaten(D) && D.geaendert && D.geaendert!==D.dateiStand)
@@ -1200,10 +1225,13 @@ function nwSchueler(k,v){
 
 /* ================= Neuerungen (Changelog) ================= */
 // Bei jeder neuen Version: APP_VERSION erhöhen (gleiche Zahl wie in sw.js) und oben einen Eintrag ergänzen.
-const APP_VERSION = 23;
+const APP_VERSION = 24;
 // Anzeige als 0.x, solange es keine endgültige Version 1.0 gibt
 const versionText = v => '0.'+v;
 const NEUERUNGEN = [
+  {v:24, datum:'26.11.2026', punkte:[
+    'Tägliche Sicherungen: Nach einem Neustart des Browsers fragt die Notenliste mit einem Klick gleichzeitig nach der Datendatei und dem Sicherungsordner.',
+    'Sind die Sicherungen pausiert oder hat die letzte seit über einem Tag nicht geklappt, erscheint oben eine orange Leiste mit Knopf zum Fortsetzen.']},
   {v:23, datum:'26.11.2026', punkte:[
     'Leistungsnachweise: Mit „+ Nachtermin“ legst du zu jeder Prüfung einen Nachtermin an. Dort erscheinen nur Schüler, die beim Haupttermin keine Note haben.',
     'Der Nachtermin hat eine eigene BE-Verteilung bzw. beim Bewertungsbogen eine eigene Gewichtung. Seine Noten zählen für die Halbjahresnote, aber nicht zum Durchschnitt der Prüfung. In der Übersicht sind sie mit „NT“ markiert.']},
@@ -1330,6 +1358,7 @@ function zeigeStart(){
   if(FS_DATEI){
     if(zf) h1=`<div class="achtung"><b>Erlaubnis nötig:</b> Deine Datendatei ist <b>${dn}</b>. Nach einem Neustart des Browsers musst du der Notenliste einmal erlauben, wieder in diese Datei zu speichern.</div>
       <div class="zeile"><button class="primary grossKnopf" data-aktion="dateiErneutVerbinden">Zugriff auf „${dn}“ erlauben</button></div>
+      ${ordnerHandle?`<p class="klein" style="margin-top:8px">Dabei fragt der Browser auch nach dem Ordner für die täglichen Sicherungen („${esc(ordnerHandle.name)}“). Beides erlauben.</p>`:''}
       <ol class="anleitung"><li>Klicke auf den Knopf.</li><li>Der Browser fragt, ob die Notenliste die Datei bearbeiten darf: <b>erlauben</b>.</li><li>Bietet der Browser <b>„Bei jedem Besuch zulassen“</b> an, wähle das. Dann entfällt dieser Schritt künftig.</li></ol>
       <p class="klein" style="margin-top:10px">Du willst eine andere Datei verwenden? <button class="link klein" data-aktion="dateiOeffnen">Andere Datendatei öffnen …</button></p>`;
     else if(s1) h1=`<p>Alle Kurse und Noten werden ab jetzt <b>automatisch</b> in <b>${dn}</b> gespeichert. Du musst nie selbst speichern.</p>`;
@@ -2720,7 +2749,8 @@ const AKTIONEN = {
 };
 function hinweisKnopf(e){ const w=e.target.dataset.was;
   if(w==='verbinden') dateiErneutVerbinden(); else if(w==='neu') dateiNeu(); else if(w==='erneut') dateiWiederholen(false);
-  else if(w==='kopie') kopieHerunterladen(); else if(w==='oeffnen') dateiOeffnen(); else dateiSpeichernManuell(); }
+  else if(w==='kopie') kopieHerunterladen(); else if(w==='oeffnen') dateiOeffnen();
+  else if(w==='ordner') ordnerFreigeben(); else if(w==='ordnerNeu') ordnerWaehlen(); else dateiSpeichernManuell(); }
 $('btnHinweisSichern').onclick=hinweisKnopf; $('btnHinweis2').onclick=hinweisKnopf;
 $('btnUpdate').onclick=jetztAktualisieren;
 
@@ -2741,6 +2771,8 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   if(D.aktKurs && !kurs()) D.aktKurs=D.kurse[0]?D.kurse[0].id:null;
   fuelleKursWahl();
   if(dateiHandle){ try{ dateiOk = (await dateiHandle.queryPermission({mode:'readwrite'}))==='granted'; }catch(e){ dateiOk=false; } }
+  await ordnerPruefen();
+  if(ordnerOk) ordnerSichern();   // gleich beim Start eine aktuelle Sicherung
   zeigeSeite(kurs()?'uebersicht':'start');
   setStatus(dateiHandle ? '' : (hatDaten(D)&&!FS_DATEI?'✓ Auf diesem Gerät gespeichert':''));
   if(dateiOk) await dateiAbgleich();
