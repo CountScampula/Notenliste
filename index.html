@@ -818,7 +818,7 @@ async function passkeyNeu(){
   try{
     cred=await navigator.credentials.create({publicKey:{rp:{name:'Notenliste'}, user:{id:zufall(16), name:wer, displayName:wer},
       challenge:zufall(32), timeout:120000, pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
-      authenticatorSelection:{userVerification:'required', residentKey:'discouraged'}, extensions:{prf:{eval:{first:prfSalt}}}}});
+      authenticatorSelection:{userVerification:'required', residentKey:'preferred', requireResidentKey:false}, extensions:{prf:{eval:{first:prfSalt}}}}});
   }catch(e){ return dialog('Kein Passkey angelegt', passkeyFehler(e)); }
   if(!cred) return;
   const ext=cred.getClientExtensionResults()||{};
@@ -1153,10 +1153,13 @@ function rechenNw(n){ return {...n, schluessel:schluesselVon(n.schluessel)}; }
 
 /* ================= Neuerungen (Changelog) ================= */
 // Bei jeder neuen Version: APP_VERSION erhöhen (gleiche Zahl wie in sw.js) und oben einen Eintrag ergänzen.
-const APP_VERSION = 20;
+const APP_VERSION = 21;
 // Anzeige als 0.x, solange es keine endgültige Version 1.0 gibt
 const versionText = v => '0.'+v;
 const NEUERUNGEN = [
+  {v:21, datum:'26.11.2026', punkte:[
+    'Verschlüsselung: Neue Passkeys werden bevorzugt im Passwortmanager angelegt (z. B. iCloud-Schlüsselbund, Google-Passwortmanager, Bitwarden), nicht nur auf Handy oder Sicherheitsschlüssel. Bereits angelegte Passkeys funktionieren weiter.',
+    'Hinweis: Auf dem Mac bieten nur Google Chrome, Edge und Safari den iCloud-Schlüsselbund an, das reine Chromium nicht.']},
   {v:20, datum:'25.11.2026', punkte:[
     'Knopf „Jetzt installieren“ auf der Startseite: In Chrome und Edge wird die Notenliste mit einem Klick zur eigenen App mit Symbol.',
     'Auf dem iPad und in Safari erscheint stattdessen eine Schritt-für-Schritt-Anleitung. In der installierten App verschwindet der Hinweis.']},
