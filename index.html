@@ -1153,10 +1153,12 @@ function rechenNw(n){ return {...n, schluessel:schluesselVon(n.schluessel)}; }
 
 /* ================= Neuerungen (Changelog) ================= */
 // Bei jeder neuen Version: APP_VERSION erhöhen (gleiche Zahl wie in sw.js) und oben einen Eintrag ergänzen.
-const APP_VERSION = 21;
+const APP_VERSION = 22;
 // Anzeige als 0.x, solange es keine endgültige Version 1.0 gibt
 const versionText = v => '0.'+v;
 const NEUERUNGEN = [
+  {v:22, datum:'26.11.2026', punkte:[
+    'Gruppenreferate: Neben dem Vortrag lassen sich jetzt auch Inhalt und Darstellung per Häkchen für jede Person einzeln bewerten. Bereits angelegte Referate bleiben unverändert.']},
   {v:21, datum:'26.11.2026', punkte:[
     'Verschlüsselung: Neue Passkeys werden bevorzugt im Passwortmanager angelegt (z. B. iCloud-Schlüsselbund, Google-Passwortmanager, Bitwarden), nicht nur auf Handy oder Sicherheitsschlüssel. Bereits angelegte Passkeys funktionieren weiter.',
     'Hinweis: Auf dem Mac bieten nur Google Chrome, Edge und Safari den iCloud-Schlüsselbund an, das reine Chromium nicht.']},
@@ -1960,19 +1962,22 @@ function refNorm(r){
   if(!Array.isArray(r.sids)) r.sids = r.sid ? [r.sid] : [];
   if('sid' in r) delete r.sid;
   if(!Array.isArray(r.mdl)) r.mdl = r.mdl ? [r.mdl] : [];
+  // früher nur Vortrag einzeln (einzelVortrag) → jetzt je Bereich: r.einzel = {a,b,c}
+  if(!r.einzel || typeof r.einzel!=='object') r.einzel = {};
+  if('einzelVortrag' in r){ if(r.einzelVortrag) r.einzel.c=true; delete r.einzelVortrag; }
   return r;
 }
 function refs(k){ k.referate = k.referate || []; k.referate.forEach(refNorm); return k.referate; }
-// Gruppenreferat mit Einzelwertung: Bereich C (Vortrag) wird je Person in r.v[sid] bewertet
-const REF_EINZEL='c';
-function refEinzel(r){ return !!r.einzelVortrag && r.sids.length>1; }
+// Gruppenreferat mit Einzelwertung: Bereiche mit r.einzel[id] werden je Person in r.v[sid] bewertet
+function refEinzelB(r,bid){ return !!(r.einzel && r.einzel[bid]) && r.sids.length>1; }
+function refEinzel(r){ return REF_BEREICHE.some(b=>refEinzelB(r,b.id)); }
 function refV(r,sid){ r.v=r.v||{}; return (r.v[sid]=r.v[sid]||{w:{}, n:{}}); }
 function refErgebnis(r,sid){
   let gesamt=0, offen=0; const ber={};
-  const vw = refEinzel(r) && sid ? refV(r,sid).w : null;
+  const vw = sid ? refV(r,sid).w : null;
   REF_BEREICHE.forEach(b=>{
     let roh=0;
-    b.k.forEach((_,i)=>{ const v=(vw && b.id===REF_EINZEL ? vw : r.w)[b.id+i]; if(C.istZahl(v)) roh+=v; else offen++; });
+    b.k.forEach((_,i)=>{ const v=(vw && refEinzelB(r,b.id) ? vw : r.w)[b.id+i]; if(C.istZahl(v)) roh+=v; else offen++; });
     ber[b.id]={ roh, max:b.k.length*4, gew:roh*b.faktor, gmax:b.k.length*4*b.faktor };
     gesamt+=roh*b.faktor;
   });
@@ -2074,7 +2079,7 @@ function zeigeRefEditor(){
   let h=`<div class="karte"><div class="zeile" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">${gruppe?'Gruppenreferat':'Referat'} – <span id="refTitel">${esc(refName(k,r))}</span></h2>
       <div class="zeile"><button class="klein" data-aktion="refDrucken">Bogen drucken</button><button class="klein danger" data-aktion="refLoeschen">Löschen</button></div></div>
     <div class="kopf">
-      <div class="feld gruppe"><label class="feld" for="refSidWahl">${gruppe?`Schüler (${mitgl.length}) – gemeinsame Bewertung, alle bekommen dieselbe Note`:'Schüler'}</label>
+      <div class="feld gruppe"><label class="feld" for="refSidWahl">${gruppe?`Schüler (${mitgl.length}) – ${refEinzel(r)?refEinzelText(r):'gemeinsame Bewertung, alle bekommen dieselbe Note'}`:'Schüler'}</label>
         <div class="chips">${mitgl.map(s=>`<span class="chip">${esc(s.nn)}, ${esc(s.vn)}${s.entfernt?' (nicht mehr im Kurs)':''}<button type="button" data-refweg="${esc(s.id)}" title="Aus dem Referat entfernen" aria-label="${esc(s.vn+' '+s.nn)} entfernen">×</button></span>`).join('')}<select id="refSidWahl" data-rf="sid">${opt}</select></div></div>
       <label class="feld">Halbjahr<select data-rf="hj"><option value="1"${r.hj===1?' selected':''}>1. Halbjahr</option><option value="2"${r.hj===2?' selected':''}>2. Halbjahr</option></select></label>
       <label class="feld">Datum<input type="date" data-rf="datum" value="${esc(r.datum)}"></label>
@@ -2084,9 +2089,9 @@ function zeigeRefEditor(){
     </div></div>
   <div id="refInhalt"><div>`;
   REF_BEREICHE.forEach(b=>{
-    const einzeln = b.id===REF_EINZEL && refEinzel(r);
+    const einzeln = refEinzelB(r,b.id);
     h+=`<div class="karte"><h3>${BUCHST[b.id]} – ${b.name} <span class="muted" style="font-weight:400">(${b.faktor===2?'doppelt':'einfach'} gewichtet)</span></h3>
-      ${b.id===REF_EINZEL && gruppe ? `<label class="einzelSchalter"><input type="checkbox" data-rf="einzel"${einzeln?' checked':''}> Vortrag für jede Person einzeln bewerten</label>` : ''}
+      ${gruppe ? `<label class="einzelSchalter"><input type="checkbox" data-rf="einzel" data-bid="${b.id}"${einzeln?' checked':''}> ${b.name} für jede Person einzeln bewerten</label>` : ''}
       <div class="kritKopf"><span>Kriterium</span><span class="sk">${[4,3,2,1,0].map(p=>`<span title="${REF_STUFEN[p]}">${p}</span>`).join('')}</span><span>Notizen</span></div>`;
     b.k.forEach(([t,d],i)=>{
       const key=b.id+i, v=r.w[key];
@@ -2120,7 +2125,7 @@ function zeigeRefSeite(){
   const e=refErgebnis(r), einzel=refEinzel(r), mitgl=refMitglieder(k,r), ep=mitgl.map(s=>({s, e:refErgebnis(r,s.id)}));
   const sumText=(b,x)=> b.faktor===1 ? `${x.roh} / ${x.max} Punkte` : `${x.roh} / ${x.max} × ${b.faktor} = ${x.gew} / ${x.gmax} Punkte`;
   REF_BEREICHE.forEach(b=>{ const el=document.querySelector(`#refEditor [data-rsum="${b.id}"]`); if(!el) return;
-    if(einzel && b.id===REF_EINZEL){ el.innerHTML=ep.map(o=>`<span>${esc(o.s.vn)}: ${sumText(b,o.e.ber[b.id])}</span>`).join('<span class="muted">·</span>'); el.style.flexWrap='wrap'; }
+    if(refEinzelB(r,b.id)){ el.innerHTML=ep.map(o=>`<span>${esc(o.s.vn)}: ${sumText(b,o.e.ber[b.id])}</span>`).join('<span class="muted">·</span>'); el.style.flexWrap='wrap'; }
     else el.textContent='Summe: '+sumText(b,e.ber[b.id]); });
   let h='';
   if(einzel){
@@ -2172,11 +2177,12 @@ $('refEditor').addEventListener('change', async e=>{
   const f=el.dataset.rf;
   if(f==='datum'){ r.datum=el.value; geaendert(); zeigeRefListe(); return; }
   if(f==='einzel'){
-    r.einzelVortrag=el.checked;
-    // Startwerte: bisherige gemeinsame Vortragsbewertung übernehmen
-    if(el.checked) r.sids.forEach(sid=>{ const vv=refV(r,sid); REF_BEREICHE.find(b=>b.id===REF_EINZEL).k.forEach((_,i)=>{ const key=REF_EINZEL+i; if(vv.w[key]==null && r.w[key]!=null) vv.w[key]=r.w[key]; }); });
+    const bid=el.dataset.bid, b=REF_BEREICHE.find(x=>x.id===bid); if(!b) return;
+    r.einzel[bid]=el.checked; if(!el.checked) delete r.einzel[bid];
+    // Startwerte: bisherige gemeinsame Bewertung dieses Bereichs übernehmen
+    if(el.checked) r.sids.forEach(sid=>{ const vv=refV(r,sid); b.k.forEach((_,i)=>{ const key=bid+i; if(vv.w[key]==null && r.w[key]!=null) vv.w[key]=r.w[key]; }); });
     refAktualisiert(k,r); zeigeRefEditor();
-    toast(el.checked ? 'Vortrag wird jetzt für jede Person einzeln bewertet.' : 'Vortrag wird wieder gemeinsam bewertet.');
+    toast(el.checked ? `${b.name} wird jetzt für jede Person einzeln bewertet.` : `${b.name} wird wieder gemeinsam bewertet.`);
     return;
   }
   if(f==='sid'){
@@ -2211,7 +2217,13 @@ async function refMitgliedWeg(sid){
   if(verkn && !(await frage('Aus dem Referat entfernen?', `${s?s.nn+', '+s.vn:'Der Schüler'} wird aus dem Referat entfernt. Die eingetragene mündliche Note (${m.wert} Punkte, ${m.h}. HJ, mdl ${m.i+1}) wird dabei wieder gelöscht.`, 'Entfernen', 'Abbrechen', true))) return;
   r.sids=r.sids.filter(x=>x!==sid);
   // nur noch eine Person: deren Vortragsbewertung wird zur normalen Bewertung
-  if(r.einzelVortrag && r.sids.length===1){ const vv=refV(r,r.sids[0]); Object.assign(r.w, vv.w); Object.assign(r.n, vv.n); r.einzelVortrag=false; }
+  if(r.sids.length===1 && Object.keys(r.einzel||{}).length){
+    const vv=refV(r,r.sids[0]);
+    REF_BEREICHE.filter(b=>r.einzel[b.id]).forEach(b=>b.k.forEach((_,i)=>{ const key=b.id+i;
+      if(key in vv.w) r.w[key]=vv.w[key]; else delete r.w[key];
+      if(key in vv.n) r.n[key]=vv.n[key]; else delete r.n[key]; }));
+    r.einzel={};
+  }
   refAktualisiert(k,r); zeigeRefEditor();
 }
 async function refEintragenKlick(){
@@ -2230,6 +2242,10 @@ async function refLoeschen(){
   verkn.forEach(m=>mdlSetzen(k,m.sid,m.h,m.i,null));
   k.referate=refs(k).filter(x=>x!==r); A.refId=null; geaendert(); zeigeReferate();
 }
+function refEinzelText(r){
+  const ein=REF_BEREICHE.filter(b=>refEinzelB(r,b.id)).map(b=>b.name), gem=REF_BEREICHE.filter(b=>!refEinzelB(r,b.id)).map(b=>b.name);
+  return (gem.length?gem.join(' und ')+' gemeinsam, ':'')+ein.join(' und ')+' einzeln bewertet';
+}
 // Ausgefüllter (oder leerer) Bewertungsbogen zum Drucken, A4 hoch
 function refBogenHTML(k, r){
   const leer=!r; r = r || {sids:[], mdl:[], w:{}, n:{}, hj:'', datum:'', thema:'', soll:'', ist:'', staerken:'', entwicklung:'', anmerkungen:'', fragen:''};
@@ -2239,7 +2255,7 @@ function refBogenHTML(k, r){
   const nl=t=>esc(t||'').replace(/\n/g,'<br>');
   let h=`<div style="font-size:9.5pt"><h1 style="color:#1d5c63;margin:0">Bewertungsbogen ${gruppe?'Gruppenreferat':'Referat'}</h1>
     <div class="sub">${esc(k.fach)} · Klasse ${esc(k.klasse)}${k.schuljahr?' · Schuljahr '+esc(k.schuljahr):''}</div>
-    <table><tr><th style="${L}width:16%">${gruppe?'Gruppe':'Name'}</th><td style="${L}width:34%">${namen.map(esc).join('<br>')}${gruppe?`<br><span style="font-size:8pt;color:#555">${einzel?'Inhalt und Darstellung gemeinsam, Vortrag einzeln bewertet':'Gemeinsame Bewertung – gleiche Note für alle'}</span>`:''}</td><th style="${L}width:16%">Datum</th><td style="${L}">${datumText(r.datum)}</td></tr>
+    <table><tr><th style="${L}width:16%">${gruppe?'Gruppe':'Name'}</th><td style="${L}width:34%">${namen.map(esc).join('<br>')}${gruppe?`<br><span style="font-size:8pt;color:#555">${einzel?refEinzelText(r):'Gemeinsame Bewertung – gleiche Note für alle'}</span>`:''}</td><th style="${L}width:16%">Datum</th><td style="${L}">${datumText(r.datum)}</td></tr>
     <tr><th style="${L}">Thema</th><td style="${L}" colspan="3">${esc(r.thema)}</td></tr>
     <tr><th style="${L}">Dauer</th><td style="${L}">Soll: ${esc(r.soll)||'____'} Min. &nbsp; Ist: ${esc(r.ist)||'____'} Min.</td><th style="${L}">Lehrkraft</th><td style="${L}">${esc(k.lehrkraft||D.lehrkraft||'')}</td></tr></table>
     <p style="margin:5pt 0">Pro Kriterium 0–4 Punkte (4 voll erfüllt · 3 überwiegend · 2 teilweise · 1 ansatzweise · 0 nicht erfüllt). Inhalt ×1, Darstellung ×1, Vortrag ×2; max. ${REF_MAX} Punkte.</p>`;
@@ -2252,7 +2268,7 @@ function refBogenHTML(k, r){
     return h;
   };
   REF_BEREICHE.forEach(b=>{
-    if(einzel && b.id===REF_EINZEL) ep.forEach(o=>{ const vv=refV(r,o.s.id); h+=bereichTab(b, vv.w, vv.n, o.e.ber[b.id], o.s.vn+' '+o.s.nn); });
+    if(einzel && refEinzelB(r,b.id)) ep.forEach(o=>{ const vv=refV(r,o.s.id); h+=bereichTab(b, vv.w, vv.n, o.e.ber[b.id], o.s.vn+' '+o.s.nn); });
     else h+=bereichTab(b, r.w, r.n, e.ber[b.id]);
   });
   if(einzel){
