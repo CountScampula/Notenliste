@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Notenliste">
+<script>(function(){try{var h=document.documentElement,d=localStorage.getItem('notenliste-design')||'petrol',m=localStorage.getItem('notenliste-modus')||'auto';h.setAttribute('data-design',d);if(m==='dunkel'||(m==='auto'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))h.setAttribute('data-dunkel','');}catch(e){document.documentElement.setAttribute('data-design','petrol');}})();</script>
 <style>
 :root{
   --bg:#f5f4f0; --panel:#fff; --ink:#1f2328; --muted:#646b73; --line:#dedbd3; --line2:#eeebe4;
@@ -299,6 +300,122 @@ body.druckmodus #druck td.l,body.druckmodus #druck th.l{text-align:left}
   .schuelerListe{columns:1}
   main{padding:12px}
 }
+
+@media screen{
+/* Design: nordisch */
+html[data-design="nordisch"]{--bg:#eef2f6;--panel:#fff;--ink:#16202b;--muted:#5d6b7a;--line:#d6dee7;--line2:#e7edf3;--accent:#2f5fd0;--accent-soft:#e3ebfb;--ok:#1f7a55;--ok-soft:#e2f3ec}
+html[data-design="nordisch"] body{font-family:"Inter","Segoe UI",system-ui,sans-serif;font-size:14.5px}
+html[data-design="nordisch"] .karte{border:none;border-radius:16px;box-shadow:0 1px 2px rgba(16,32,60,.06),0 4px 16px rgba(16,32,60,.06)}
+html[data-design="nordisch"] header{background:#fff;box-shadow:0 1px 0 #d6dee7;border:none}
+html[data-design="nordisch"] nav#tabs button{border-radius:999px}
+html[data-design="nordisch"] nav#tabs button.aktiv{background:var(--accent);color:#fff}
+html[data-design="nordisch"] button,html[data-design="nordisch"] input,html[data-design="nordisch"] select{border-radius:10px}
+html[data-design="nordisch"] table.raster thead th,html[data-design="nordisch"] table.raster thead th.name,html[data-design="nordisch"] table.raster tfoot td{background:#f3f6fa}
+html[data-design="nordisch"] table.raster tbody tr:nth-child(even) td,html[data-design="nordisch"] table.raster tbody tr:nth-child(even) td.name{background:#f8fafc}
+html[data-design="nordisch"] table.raster td.calc{background:#eef3fd !important}
+html[data-design="nordisch"] table.raster thead th.gruppe{background:#e3ebfb;color:#2f5fd0}
+/* Design: klassisch */
+html[data-design="klassisch"]{--bg:#f4efe4;--panel:#fffdf7;--ink:#2a241c;--muted:#6f6555;--line:#d8cdb6;--line2:#e9e1cf;--accent:#7a1f2b;--accent-soft:#f3e3e1}
+html[data-design="klassisch"] body{font-family:Georgia,"Times New Roman",serif;font-size:15px}
+html[data-design="klassisch"] .karte h2,html[data-design="klassisch"] .karte h3,html[data-design="klassisch"] .marke{font-family:Georgia,serif;letter-spacing:.2px}
+html[data-design="klassisch"] .karte{border-radius:4px;border:1px solid #cdbf9f;box-shadow:2px 2px 0 #e3d8c0}
+html[data-design="klassisch"] header{background:#2b3a55;border:none}
+html[data-design="klassisch"] header .marke{color:#fff}
+html[data-design="klassisch"] header .marke b{color:#f3e6c8}
+html[data-design="klassisch"] table.raster thead th.gruppe{background:#e8dcc2;color:#7a1f2b}
+html[data-design="klassisch"] header #status{color:#c9d2e3}
+html[data-design="klassisch"] nav#tabs button{color:#c9d2e3;border-radius:3px}
+html[data-design="klassisch"] nav#tabs button.aktiv{background:#f3e6c8;color:#2b3a55}
+html[data-design="klassisch"] #kursWahl{background:#f3e6c8;border-color:#f3e6c8;color:#2b3a55}
+html[data-design="klassisch"] button,html[data-design="klassisch"] input,html[data-design="klassisch"] select{border-radius:3px}
+html[data-design="klassisch"] table.raster thead th,html[data-design="klassisch"] table.raster thead th.name,html[data-design="klassisch"] table.raster tfoot td{background:#efe6d2;font-family:Georgia,serif}
+html[data-design="klassisch"] table.raster tbody tr:nth-child(even) td,html[data-design="klassisch"] table.raster tbody tr:nth-child(even) td.name{background:#faf5ea}
+html[data-design="klassisch"] table.raster td.calc{background:#f1e9d9 !important}
+/* Design: kompakt */
+html[data-design="kompakt"]{--bg:#f3f3f3;--panel:#fff;--ink:#1b1b1b;--muted:#5f5f5f;--line:#c8c8c8;--line2:#dcdcdc;--accent:#217346;--accent-soft:#e2efe7}
+html[data-design="kompakt"] body{font-family:"Segoe UI",Calibri,Arial,sans-serif;font-size:13px}
+html[data-design="kompakt"] main{padding:10px}
+html[data-design="kompakt"] .karte{border-radius:2px;padding:12px 14px;margin-bottom:10px}
+html[data-design="kompakt"] header{background:#217346;border:none;padding:6px 14px}
+html[data-design="kompakt"] header .marke{color:#d8efe1}
+html[data-design="kompakt"] header .marke b{color:#fff}
+html[data-design="kompakt"] table.raster thead th.gruppe{background:#d9eadf;color:#217346}
+html[data-design="kompakt"] header #status{color:#d8efe1}
+html[data-design="kompakt"] header .marke svg,html[data-design="kompakt"] header .marke img{filter:brightness(1.1)}
+html[data-design="kompakt"] nav#tabs button{color:#e8f5ec;border-radius:2px;padding:5px 9px}
+html[data-design="kompakt"] nav#tabs button.aktiv{background:#fff;color:#217346}
+html[data-design="kompakt"] button,html[data-design="kompakt"] input,html[data-design="kompakt"] select{border-radius:2px;padding:4px 8px}
+html[data-design="kompakt"] table.raster{font-size:12.5px}
+html[data-design="kompakt"] table.raster th,html[data-design="kompakt"] table.raster td{height:24px;border-color:#d4d4d4}
+html[data-design="kompakt"] table.raster input.zelle{height:23px;width:44px;font-size:12.5px}
+html[data-design="kompakt"] table.raster thead th,html[data-design="kompakt"] table.raster thead th.name,html[data-design="kompakt"] table.raster tfoot td{background:#e9e9e9;color:#333}
+html[data-design="kompakt"] table.raster tbody tr:nth-child(even) td,html[data-design="kompakt"] table.raster tbody tr:nth-child(even) td.name{background:#fff}
+html[data-design="kompakt"] table.raster td.calc{background:#eef6f1 !important}
+/* Design: pastell */
+html[data-design="pastell"]{--bg:#fbf6f3;--panel:#fff;--ink:#2b2433;--muted:#766b80;--line:#ece0e6;--line2:#f4ecf0;--accent:#7b4fd6;--accent-soft:#efe8fc;--ok:#2f8f6a;--ok-soft:#e3f5ed}
+html[data-design="pastell"] body{font-family:"Nunito","Segoe UI Rounded","SF Pro Rounded",system-ui,sans-serif;font-size:15px}
+html[data-design="pastell"] .karte{border:none;border-radius:22px;box-shadow:0 6px 24px rgba(123,79,214,.08)}
+html[data-design="pastell"] header{background:linear-gradient(90deg,#7b4fd6,#e0679a);border:none}
+html[data-design="pastell"] header .marke{color:#fde9f2}
+html[data-design="pastell"] header .marke b{color:#fff}
+html[data-design="pastell"] table.raster thead th.gruppe{background:#efe8fc;color:#7b4fd6}
+html[data-design="pastell"] header #status{color:#fde9f2}
+html[data-design="pastell"] nav#tabs button{color:#f7ecff;border-radius:999px}
+html[data-design="pastell"] nav#tabs button.aktiv{background:#fff;color:#7b4fd6}
+html[data-design="pastell"] #kursWahl{border-radius:999px;border:none}
+html[data-design="pastell"] button,html[data-design="pastell"] input,html[data-design="pastell"] select{border-radius:12px}
+html[data-design="pastell"] button.primary{background:linear-gradient(90deg,#7b4fd6,#c75fb3);border:none}
+html[data-design="pastell"] table.raster thead th,html[data-design="pastell"] table.raster thead th.name,html[data-design="pastell"] table.raster tfoot td{background:#f7f1fb;color:#5d4f6b}
+html[data-design="pastell"] table.raster tbody tr:nth-child(even) td,html[data-design="pastell"] table.raster tbody tr:nth-child(even) td.name{background:#fdfafc}
+html[data-design="pastell"] table.raster td.calc{background:#f3eefc !important}
+
+/* Dunkelmodus (für alle Designs) */
+html[data-dunkel]{--bg:#121417;--panel:#1b1e23;--ink:#e6e8eb;--muted:#9aa3ad;--line:#2d323a;--line2:#262a31;--accent:#4fc3b4;--accent-soft:#1f3532;--warn:#f0a35e;--warn-soft:#3a2a1c;--err:#ff7a7a;--err-soft:#3b1f22;--ok:#6fcf8a;--ok-soft:#1d3324;color-scheme:dark}
+html[data-dunkel][data-design="nordisch"]{--accent:#7aa2ff;--accent-soft:#1e2a44}
+html[data-dunkel][data-design="klassisch"]{--accent:#e88c98;--accent-soft:#3a2226;--bg:#17140f;--panel:#201c16;--line:#3a3328;--line2:#2c271f}
+html[data-dunkel][data-design="kompakt"]{--accent:#4cbb7a;--accent-soft:#1d3324}
+html[data-dunkel][data-design="pastell"]{--accent:#b392ff;--accent-soft:#2c2440}
+html[data-dunkel] input,html[data-dunkel] select,html[data-dunkel] textarea{background:#14171b;color:var(--ink)}
+html[data-dunkel] code{background:#262a31}
+html[data-dunkel] label.feld{color:#b7bec6}
+html[data-dunkel] button{background:#22262c;color:var(--ink)} html[data-dunkel] button:hover{border-color:#4a515b}
+html[data-dunkel] button.primary,html[data-dunkel] .stufen button.an,html[data-dunkel] .terminWahl button.an{background:var(--accent);border-color:var(--accent);color:#0e1513}
+html[data-dunkel][data-design="pastell"] button.primary{background:linear-gradient(90deg,#8f6ae0,#c75fb3);color:#fff}
+html[data-dunkel] button.link{background:none}
+html[data-dunkel][data-design="petrol"] header,html[data-dunkel][data-design="nordisch"] header{background:#16191d;box-shadow:none;border-bottom:1px solid var(--line)}
+html[data-dunkel][data-design="nordisch"] nav#tabs button.aktiv{color:#0e1513}
+html[data-dunkel] .karte{box-shadow:none}
+html[data-dunkel] table.raster thead th,html[data-dunkel] table.raster thead th.name,html[data-dunkel] table.raster tfoot td{background:#20242a;color:#c4cad1}
+html[data-dunkel] table.raster thead th.gruppe{background:var(--accent-soft);color:var(--accent)}
+html[data-dunkel] table.raster tbody tr:nth-child(even) td,html[data-dunkel] table.raster tbody tr:nth-child(even) td.name{background:#1e2126}
+html[data-dunkel] table.raster td.calc{background:#1d2629 !important}
+html[data-dunkel] table.raster input.zelle:focus{background:#14171b}
+html[data-dunkel] table.raster input.zelle.ref{background:#2c2440;color:#cdb8ff}
+html[data-dunkel] .p0,html[data-dunkel] table.raster tbody tr td.p0{background:#5a2226 !important;color:#ffd4d4}
+html[data-dunkel] .p13,html[data-dunkel] table.raster tbody tr td.p13{background:#4a3020 !important;color:#ffd9bd}
+html[data-dunkel] table.raster tbody tr.st-rot td{background:#3a1f22 !important}
+html[data-dunkel] table.raster tbody tr.st-orange td{background:#3a2e1b !important}
+html[data-dunkel] table.raster tbody tr.st-gruen td{background:#1d3324 !important}
+html[data-dunkel] #nwListe .nw:hover,html[data-dunkel] #refListe .nw:hover{background:#23272d}
+html[data-dunkel] .kennz div,html[data-dunkel] .bogenErg div{background:#20242a}
+html[data-dunkel] .installBox,html[data-dunkel] #start .wahl>div,html[data-dunkel] #start .schritt.aktuell,html[data-dunkel] .gutachten{background:var(--panel)}
+html[data-dunkel] #start .schritt,html[data-dunkel] .bogenAufg{background:#181b20}
+html[data-dunkel] #start .marke2.ok{background:var(--ok-soft)}
+html[data-dunkel] #start .tipp{color:#cfe9e5}
+html[data-dunkel] .bogenTab th.ek,html[data-dunkel] .bogenTab input.bgIn.e,html[data-dunkel] .gutachten p.e{color:#ff8a8a}
+html[data-dunkel] .bogenTab th.zk,html[data-dunkel] .bogenTab input.bgIn.z,html[data-dunkel] .gutachten p.z{color:#7fd38f}
+html[data-dunkel] dialog{background:var(--panel);color:var(--ink)}
+html[data-dunkel] dialog .text{color:#c9cfd6}
+html[data-dunkel] #toast{background:#e6e8eb;color:#121417}
+
+}
+
+/* Darstellung-Auswahl */
+.designWahl{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:10px}
+.designKachel{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:12px;text-align:left;font-size:14px}
+.designKachel .muster{display:flex;width:100%;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.designKachel .muster i{flex:1}
+.designKachel.an{border:2px solid var(--accent);box-shadow:0 0 0 3px var(--accent-soft);font-weight:600}
 </style>
 </head>
 <body>
@@ -1225,10 +1342,13 @@ function nwSchueler(k,v){
 
 /* ================= Neuerungen (Changelog) ================= */
 // Bei jeder neuen Version: APP_VERSION erhöhen (gleiche Zahl wie in sw.js) und oben einen Eintrag ergänzen.
-const APP_VERSION = 24;
+const APP_VERSION = 25;
 // Anzeige als 0.x, solange es keine endgültige Version 1.0 gibt
 const versionText = v => '0.'+v;
 const NEUERUNGEN = [
+  {v:25, datum:'26.11.2026', punkte:[
+    'Neu unter „Daten & Einstellungen“ → „Darstellung“: fünf Designs zur Auswahl (Petrol, Nordisch hell, Klassisch/Notenbuch, Kompakt im Excel-Stil, Freundlich/Pastell).',
+    'Hell- und Dunkelmodus für alle Designs: automatisch nach Geräteeinstellung oder fest eingestellt. Ausdrucke bleiben schwarz auf weiß.']},
   {v:24, datum:'26.11.2026', punkte:[
     'Tägliche Sicherungen: Nach einem Neustart des Browsers fragt die Notenliste mit einem Klick gleichzeitig nach der Datendatei und dem Sicherungsordner.',
     'Sind die Sicherungen pausiert oder hat die letzte seit über einem Tag nicht geklappt, erscheint oben eine orange Leiste mit Knopf zum Fortsetzen.']},
@@ -1295,6 +1415,39 @@ async function jetztAktualisieren(){
   }
   location.reload();
 }
+
+/* ================= Darstellung (Design, Hell/Dunkel) ================= */
+// gilt pro Gerät (localStorage); das frühe Skript im <head> setzt die Attribute schon vor dem ersten Zeichnen
+const DESIGNS = [
+  {id:'petrol',    name:'Petrol (Standard)',     kopf:'#1d5c63', muster:['#1d5c63','#e3efef','#f5f4f0']},
+  {id:'nordisch',  name:'Nordisch hell',         kopf:'#2f5fd0', muster:['#2f5fd0','#e3ebfb','#eef2f6']},
+  {id:'klassisch', name:'Klassisch / Notenbuch', kopf:'#2b3a55', muster:['#2b3a55','#7a1f2b','#f4efe4']},
+  {id:'kompakt',   name:'Kompakt im Excel-Stil', kopf:'#217346', muster:['#217346','#e2efe7','#f3f3f3']},
+  {id:'pastell',   name:'Freundlich / Pastell',  kopf:'#7b4fd6', muster:['#7b4fd6','#e0679a','#fbf6f3']},
+];
+const MODI = [{id:'auto',name:'Automatisch'},{id:'hell',name:'Hell'},{id:'dunkel',name:'Dunkel'}];
+function designAktuell(){ const d=lsGet('notenliste-design'); return DESIGNS.some(x=>x.id===d)?d:'petrol'; }
+function modusAktuell(){ const m=lsGet('notenliste-modus'); return MODI.some(x=>x.id===m)?m:'auto'; }
+function designAnwenden(){
+  const d=designAktuell(), m=modusAktuell(), h=document.documentElement;
+  let dunkel = m==='dunkel'; try{ if(m==='auto') dunkel = matchMedia('(prefers-color-scheme: dark)').matches; }catch(e){}
+  h.setAttribute('data-design', d); h.toggleAttribute('data-dunkel', dunkel);
+  const meta=document.querySelector('meta[name="theme-color"]'); if(meta) meta.content = dunkel ? '#16191d' : (DESIGNS.find(x=>x.id===d)||DESIGNS[0]).kopf;
+}
+try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', designAnwenden); }catch(e){}
+function darstellungKarte(){
+  const d=designAktuell(), m=modusAktuell();
+  return `<div class="karte"><h2>Darstellung</h2><p>Gilt nur für dieses Gerät. Ausdrucke bleiben immer schwarz auf weiß.</p>
+    <div class="zeile" style="margin-top:8px"><b class="klein">Hell / Dunkel:</b><span class="terminWahl">${MODI.map(x=>`<button class="klein${x.id===m?' an':''}" data-moduswahl="${x.id}">${x.name}</button>`).join('')}</span>
+      <span class="muted klein">${m==='auto'?'richtet sich nach der Einstellung des Geräts':''}</span></div>
+    <div class="designWahl">${DESIGNS.map(x=>`<button class="designKachel${x.id===d?' an':''}" data-designwahl="${x.id}"><span class="muster">${x.muster.map(f=>`<i style="background:${f}"></i>`).join('')}</span>${esc(x.name)}</button>`).join('')}</div></div>`;
+}
+document.addEventListener('click', e=>{
+  const b=e.target.closest('[data-designwahl],[data-moduswahl]'); if(!b) return;
+  if(b.dataset.designwahl) lsSet('notenliste-design', b.dataset.designwahl); else lsSet('notenliste-modus', b.dataset.moduswahl);
+  designAnwenden(); if(A.seite==='daten') zeigeDaten();
+});
+designAnwenden();
 
 /* ================= Navigation ================= */
 // Solange die Einrichtung nicht fertig ist, sind nur diese Seiten erreichbar
@@ -2467,6 +2620,7 @@ function zeigeDaten(){
     <div class="zeile">${Object.entries(FORM_KAT).map(([kat,name])=>`<button class="klein" data-fkat="${kat}">${esc(name)}${D.formulierungen&&D.formulierungen[kat]?' ✎':''} …</button>`).join('')}</div>
   </div>
   <div class="karte"><h2>Lehrkraft</h2><div class="zeile"><label class="feld" style="max-width:320px;flex:1">Name (für Ausdrucke)<input id="lehrkraftFeld" value="${esc(D.lehrkraft||'')}"></label></div></div>
+  ${darstellungKarte()}
   <div class="karte"><h2>Verwaltung</h2><p>Für die Lehrkraft, die die Schülerlisten für die Schule vorbereitet: Schuljahrespaket aus einer Excel-Liste erstellen.</p><div class="zeile"><button data-aktion="zuVerwaltung">Zur Verwaltung …</button></div></div>
   <p class="muted klein">Notenliste Version ${versionText(APP_VERSION)} · <button class="link klein" data-aktion="alleNeuerungen">Neuerungen anzeigen</button> · Daten bleiben auf diesem Gerät · <button class="link klein" data-aktion="allesLoeschen">Alle Daten auf diesem Gerät löschen …</button></p>`;
   $('daten').innerHTML=h;
@@ -2668,7 +2822,7 @@ async function drucken(html, opt){
   if(opt && opt.hoch){ st=document.createElement('style'); st.textContent='@media print{@page{size:A4 portrait;margin:12mm}}'; document.head.appendChild(st); window.addEventListener('afterprint', ()=>{ st.remove(); }, {once:true}); setTimeout(()=>{ if(st.isConnected) st.remove(); }, 60000); }
   return druckenEigentlich(html, st);
 }
-async function druckenEigentlich(html, st){ $('druck').innerHTML=html; if(NATIV){ document.body.classList.add('druckmodus'); try{ await nativ('drucken'); }catch(e){} document.body.classList.remove('druckmodus'); if(st) st.remove(); return; } window.print(); }
+async function druckenEigentlich(html, st){ $('druck').innerHTML=html; if(NATIV){ const h=document.documentElement; h.removeAttribute('data-dunkel'); h.setAttribute('data-design','petrol'); document.body.classList.add('druckmodus'); try{ await nativ('drucken'); }catch(e){} document.body.classList.remove('druckmodus'); designAnwenden(); if(st) st.remove(); return; } window.print(); }
 function druckKopf(titel){ const k=kurs(); return `<h1>${esc(titel)}</h1><div class="sub">Klasse ${esc(k.klasse)} · ${esc(k.fach)} · Schuljahr ${esc(k.schuljahr||'')} · Lehrkraft ${esc(k.lehrkraft||D.lehrkraft||'')} · Stand ${new Date().toLocaleDateString('de-DE')}</div>`; }
 function druckUebersicht(){
   const t=$('tabUebersicht').cloneNode(true);
