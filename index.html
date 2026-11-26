@@ -214,6 +214,14 @@ th .unter{display:block;font-weight:400;color:var(--muted);font-size:11px}
 .kritGruppe{grid-template-columns:1fr;padding-bottom:2px}
 .kritPerson{border-top:none;padding:3px 0}
 .kritPerson .person{padding-left:16px;font-size:14px;font-weight:600;color:var(--accent)}
+.terminWahl{display:inline-flex;gap:0;margin-right:6px}
+.terminWahl button{border-radius:0}
+.terminWahl button:first-child{border-radius:8px 0 0 8px}
+.terminWahl button:last-child{border-radius:0 8px 8px 0}
+.terminWahl button:only-child{border-radius:8px}
+.terminWahl button.an{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ntHinweis{background:var(--accent-soft);border-radius:8px;padding:8px 12px;font-size:13.5px;margin:0 0 10px}
+.ntMarke{font-size:9px;font-weight:700;color:var(--accent);margin-left:1px}
 .einzelSchalter{display:flex;align-items:center;gap:8px;font-size:14px;margin:-2px 0 10px;cursor:pointer}
 .einzelSchalter input{width:18px;height:18px}
 .refFragen textarea{width:100%;min-height:110px;resize:vertical}
@@ -494,7 +502,8 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     }
     return { aufg: aufg, gesamt: voll ? p15(ges) : null, irgend: irgend };
   }
-  function ergebnis(nw, sid) {
+  // Ergebnis eines einzelnen Termins (Haupttermin oder Nachtermin-Sicht)
+  function ergebnisTermin(nw, sid) {
     if (nw.modus === 'bogen') {
       var e = bogenKorrektor(nw, sid, 'e');
       return { summe: null, anteil: null, punkte: e.gesamt == null ? null : Math.max(0, Math.min(15, round(e.gesamt, 0))) };
@@ -509,9 +518,25 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
     var s = p15(summe(z)), be = gesamtBE(nw);
     return { summe: s, anteil: be > 0 ? s / be : null, punkte: punkte(s, be, nw.schluessel) };
   }
+  // Nachtermin (nw.nt): gleiche Bewertungsart und gleicher Schlüssel, eigene BE / Gewichtung / Werte
+  function ntAlsNw(nw) {
+    var t = nw.nt || {};
+    return { modus: nw.modus, schluessel: nw.schluessel, aufgaben: t.aufgaben || [], werte: t.werte || {}, direkt: t.direkt || {},
+      bogen: t.bogen || nw.bogen, bw: t.bw || {}, nachtermin: true };
+  }
+  // Note eines Schülers: Haupttermin; nur wenn dort keine Note steht, zählt der Nachtermin
+  function ergebnis(nw, sid) {
+    var r = ergebnisTermin(nw, sid);
+    if (r.punkte == null && nw.nt && !nw.nachtermin) {
+      var r2 = ergebnisTermin(ntAlsNw(nw), sid);
+      if (r2.punkte != null) { r2.nachtermin = true; return r2; }
+    }
+    return r;
+  }
+  // Notenspiegel/Schnitt: nur der jeweilige Termin (Nachtermin zählt nicht zum Schnitt der Prüfung)
   function notenspiegel(nw, sids) {
     var n = new Array(16).fill(0), ps = [];
-    sids.forEach(function (sid) { var p = ergebnis(nw, sid).punkte; if (istZahl(p)) { n[p]++; ps.push(p); } });
+    sids.forEach(function (sid) { var p = ergebnisTermin(nw, sid).punkte; if (istZahl(p)) { n[p]++; ps.push(p); } });
     return { anzahl: n, schnitt: ps.length ? round(mittel(ps), 2) : null, teilnehmer: ps.length };
   }
 
@@ -544,7 +569,7 @@ if(xr(e,"index.xml"))throw new Error("Unsupported NUMBERS 09 file");throw new Er
 
   root.NotenCore = {
     roundUp: roundUp, round: round, SCHLUESSEL: SCHLUESSEL, NOTEN_TEXT: NOTEN_TEXT,
-    grenzen: grenzen, punkte: punkte, beTabelle: beTabelle, gesamtBE: gesamtBE, ergebnis: ergebnis, bogenKorrektor: bogenKorrektor,
+    grenzen: grenzen, punkte: punkte, beTabelle: beTabelle, gesamtBE: gesamtBE, ergebnis: ergebnis, ergebnisTermin: ergebnisTermin, ntAlsNw: ntAlsNw, bogenKorrektor: bogenKorrektor,
     notenspiegel: notenspiegel, halbjahr: halbjahr, jahr: jahr, klassenschnitt: klassenschnitt, istZahl: istZahl
   };
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -1125,6 +1150,7 @@ function nwSortiert(k,h){
 }
 function nwNr(k,n){ const o=k.nachweise.find(x=>x.id===n.id)||n; return nwSortiert(k).filter(x=>x.typ===o.typ).indexOf(o)+1; }
 function nwTitel(k,n){
+  if(n.nachtermin){ const h=k.nachweise.find(x=>x.id===n.id); return (h?nwTitel(k,h):'Leistungsnachweis')+' – Nachtermin'; }
   if(n.titel) return n.titel;
   n={...n, nr:nwNr(k,n)};
   if(n.typ==='SA') return `${n.nr}. Schulaufgabe`;
@@ -1150,13 +1176,37 @@ function rechenKurs(k){
   return { hj:k.hj, mdl:k.mdl, nachweise:k.nachweise.filter(n=>n.typ!=='X').map(n=>({...n, schluessel:schluesselVon(n.schluessel)})) };
 }
 function rechenNw(n){ return {...n, schluessel:schluesselVon(n.schluessel)}; }
+// ---- Nachtermin ----
+// n.nt = {geschrieben, zurueck, aufgaben, werte, direkt, bogen, bw}; Bewertungsart und Schlüssel vom Haupttermin
+function ntSicht(n){
+  const t=n.nt;
+  t.modus=n.modus; t.schluessel=n.schluessel; t.typ=n.typ; t.hj=n.hj; t.id=n.id; t.nachtermin=true;
+  if(!Array.isArray(t.aufgaben) || !t.aufgaben.length) t.aufgaben=[null];
+  t.werte=t.werte||{}; t.direkt=t.direkt||{};
+  if(n.modus==='bogen'){ if(!t.bogen) t.bogen={ anz:(n.bogen&&n.bogen.anz)||3, gew:((n.bogen&&n.bogen.gew)||BOGEN_GEW_STANDARD[3]).slice(), zweit:!!(n.bogen&&n.bogen.zweit) }; t.bw=t.bw||{}; }
+  return t;
+}
+function hauptNw(k){ k=k||kurs(); return k ? k.nachweise.find(x=>x.id===A.nwId) || null : null; }
+// aktuell angezeigter Termin (Haupttermin oder Nachtermin)
+function aktNw(k){ const n=hauptNw(k); if(!n) return null; if(!n.nt) A.nt=false; return A.nt ? ntSicht(n) : n; }
+function ntHatDaten(t,sid){ return !!(t && ((t.werte&&t.werte[sid]&&t.werte[sid].some(x=>x!=null)) || (t.direkt&&t.direkt[sid]!=null) || (t.bw&&t.bw[sid]))); }
+// Schüler eines Termins: beim Nachtermin nur, wer beim Haupttermin keine Note hat (oder schon Nachtermin-Einträge)
+function nwSchueler(k,v){
+  const alle=aktiveSchueler(k);
+  if(!v || !v.nachtermin) return alle;
+  const n=k.nachweise.find(x=>x.id===v.id), RN=rechenNw(n);
+  return alle.filter(s=>C.ergebnisTermin(RN,s.id).punkte==null || ntHatDaten(n.nt,s.id));
+}
 
 /* ================= Neuerungen (Changelog) ================= */
 // Bei jeder neuen Version: APP_VERSION erhöhen (gleiche Zahl wie in sw.js) und oben einen Eintrag ergänzen.
-const APP_VERSION = 22;
+const APP_VERSION = 23;
 // Anzeige als 0.x, solange es keine endgültige Version 1.0 gibt
 const versionText = v => '0.'+v;
 const NEUERUNGEN = [
+  {v:23, datum:'26.11.2026', punkte:[
+    'Leistungsnachweise: Mit „+ Nachtermin“ legst du zu jeder Prüfung einen Nachtermin an. Dort erscheinen nur Schüler, die beim Haupttermin keine Note haben.',
+    'Der Nachtermin hat eine eigene BE-Verteilung bzw. beim Bewertungsbogen eine eigene Gewichtung. Seine Noten zählen für die Halbjahresnote, aber nicht zum Durchschnitt der Prüfung. In der Übersicht sind sie mit „NT“ markiert.']},
   {v:22, datum:'26.11.2026', punkte:[
     'Gruppenreferate: Neben dem Vortrag lassen sich jetzt auch Inhalt und Darstellung per Häkchen für jede Person einzeln bewerten. Bereits angelegte Referate bleiben unverändert.']},
   {v:21, datum:'26.11.2026', punkte:[
@@ -1423,7 +1473,7 @@ function zeigeUebersicht(){
     const j=C.jahr(RK, s.id);
     const zeileHJ=(S,r,hNr)=>{
       let z='';
-      const nwZelle=(n)=>{ const p=C.ergebnis(rechenNw(n), s.id).punkte; add(n.id,p); return `<td class="wert ${notenKlasse(p)}">${p==null?'':p}</td>`; };
+      const nwZelle=(n)=>{ const r=C.ergebnis(rechenNw(n), s.id), p=r.punkte; add(n.id, r.nachtermin?null:p); return `<td class="wert ${notenKlasse(p)}"${r.nachtermin?' title="Nachtermin – zählt nicht zum Schnitt der Prüfung"':''}>${p==null?'':p}${r.nachtermin?'<sup class="ntMarke">NT</sup>':''}</td>`; };
       z+=S.sa.map(nwZelle).join('')+S.kln.map(nwZelle).join('');
       const m=(k.mdl[s.id]&&k.mdl[s.id][hNr])||[];
       for(let x=0;x<anzM;x++){ const v=m[x]; add(`m${hNr}_${x}`, v); const rf=refSlot.get(`${s.id}|${hNr}|${x}`); z+=`<td><input class="zelle${rf?' ref':''}" data-mdl="${s.id}" data-h="${hNr}" data-i="${x}" inputmode="numeric" value="${v==null?'':v}"${rf?` title="${esc((rf.r.sids.length>1?'Gruppenreferat: ':'Referat: ')+(rf.r.thema||'ohne Thema')+(rf.r.datum?' ('+datumText(rf.r.datum)+')':''))}"`:''}></td>`; }
@@ -1451,7 +1501,7 @@ $('hjEinstellungen').addEventListener('change', e=>{
   else { const v=zahl(el.value); if(v==null||v<0){ toast('Bitte eine Zahl eintragen.'); } else c[el.dataset.e]=v; }
   geaendert(); neuMitFokus(zeigeUebersicht);
 });
-$('tabUebersicht').addEventListener('click', e=>{ const tn=e.target.closest('td.name[data-status]'); if(tn && tn.dataset.status){ toast(tn.dataset.status); return; } const th=e.target.closest('th[data-nw]'); if(th){ A.nwId=th.dataset.nw; zeigeSeite('nachweise'); } });
+$('tabUebersicht').addEventListener('click', e=>{ const tn=e.target.closest('td.name[data-status]'); if(tn && tn.dataset.status){ toast(tn.dataset.status); return; } const th=e.target.closest('th[data-nw]'); if(th){ A.nwId=th.dataset.nw; A.nt=false; zeigeSeite('nachweise'); } });
 $('tabUebersicht').addEventListener('change', e=>{
   const el=e.target; if(!el.dataset.mdl) return;
   const k=kurs(), v=zahl(el.value);
@@ -1495,7 +1545,7 @@ function zeigeNachweise(){
     h+=`<h4>${hj}. Halbjahr</h4>`;
     nwSortiert(k,hj).forEach(n=>{
       const sp=C.notenspiegel(rechenNw(n), aktiveSchueler(k).map(s=>s.id));
-      h+=`<div class="nw${n.id===A.nwId?' aktiv':''}" data-nw="${n.id}"><span><span class="t ${n.typ==='KLN'?(k.hj[hj].klein==='KA'?'ka':'ex'):''}">${esc(nwTitel(k,n))}</span><br><span class="s">${esc(datumText(n.geschrieben)||'ohne Datum')}${n.typ==='X'?' · zählt nicht':''}</span></span><span class="s">${sp.schnitt==null?'':'∅ '+fmt(sp.schnitt,2)}</span></div>`;
+      h+=`<div class="nw${n.id===A.nwId?' aktiv':''}" data-nw="${n.id}"><span><span class="t ${n.typ==='KLN'?(k.hj[hj].klein==='KA'?'ka':'ex'):''}">${esc(nwTitel(k,n))}</span><br><span class="s">${esc(datumText(n.geschrieben)||'ohne Datum')}${n.typ==='X'?' · zählt nicht':''}${n.nt?' · mit Nachtermin':''}</span></span><span class="s">${sp.schnitt==null?'':'∅ '+fmt(sp.schnitt,2)}</span></div>`;
     });
     const nSA=k.nachweise.filter(n=>n.hj===hj&&n.typ==='SA').length, nEP=k.nachweise.filter(n=>n.hj===hj&&n.typ==='EP').length;
     h+=`<div class="neu"><button class="klein" data-neu="SA" data-hj="${hj}" ${nSA>=2?'disabled title="Höchstens 2 Schulaufgaben pro Halbjahr"':''}>+ Schulaufgabe</button><button class="klein" data-neu="KLN" data-hj="${hj}">+ ${KLEIN[k.hj[hj].klein]}</button><button class="klein" data-neu="EP" data-hj="${hj}" ${nEP>=1?'disabled':''}>+ Ersatzprüfung</button><button class="klein" data-neu="X" data-hj="${hj}" title="z. B. Probe-Abitur – fließt nicht in die Noten ein">+ Sonstige</button></div>`;
@@ -1506,7 +1556,7 @@ function zeigeNachweise(){
   zeigeNwEditor();
 }
 $('nwListe').addEventListener('click', e=>{
-  const n=e.target.closest('.nw'); if(n){ A.nwId=n.dataset.nw; zeigeNachweise(); return; }
+  const n=e.target.closest('.nw'); if(n){ if(A.nwId!==n.dataset.nw) A.nt=false; A.nwId=n.dataset.nw; zeigeNachweise(); return; }
   const b=e.target.closest('button[data-neu]'); if(b) nwNeu(b.dataset.neu, +b.dataset.hj);
 });
 function nwNeu(typ, hj){
@@ -1514,22 +1564,27 @@ function nwNeu(typ, hj){
   const vorher = k.nachweise.filter(n=>n.typ!=='X').slice(-1)[0];
   const n={ id:uid(), erstellt:Date.now(), hj, typ, titel:'', geschrieben:'', zurueck:'', schluessel: vorher?vorher.schluessel:'mathe', modus:'aufgaben', aufgaben:[null,null,null,null], werte:{}, direkt:{} };
   if(typ==='X') n.schluessel='abiEnglisch';
-  k.nachweise.push(n); A.nwId=n.id; geaendert(); zeigeNachweise();
+  k.nachweise.push(n); A.nwId=n.id; A.nt=false; geaendert(); zeigeNachweise();
   const e=document.querySelector('#nwEditor input[data-be]'); if(e) e.focus();
 }
 function zeigeNwEditor(){
-  const k=kurs(), n=k.nachweise.find(x=>x.id===A.nwId), ed=$('nwEditor');
+  const k=kurs(), n=aktNw(k), haupt=hauptNw(k), ed=$('nwEditor'), nt=!!(n&&n.nachtermin);
   if(!n){ ed.innerHTML=`<div class="karte leer">Noch keine Leistungsnachweise. Lege links einen an.</div>`; return; }
-  const RN=rechenNw(n), sch=aktiveSchueler(k), be=C.gesamtBE(RN);
+  const RN=rechenNw(n), sch=nwSchueler(k,n), be=C.gesamtBE(RN);
+  const anzNT = haupt.nt ? nwSchueler(k,ntSicht(haupt)).length : aktiveSchueler(k).filter(s=>C.ergebnisTermin(rechenNw(haupt),s.id).punkte==null).length;
+  const terminWahl = haupt.nt
+    ? `<div class="terminWahl"><button class="klein${nt?'':' an'}" data-termin="haupt">Haupttermin</button><button class="klein${nt?' an':''}" data-termin="nt">Nachtermin (${anzNT})</button></div>`
+    : `<div class="terminWahl"><button class="klein" data-aktion="ntAnlegen" title="Für Schüler, die beim Haupttermin keine Note haben">+ Nachtermin</button></div>`;
   const schl=schluesselListe().map(s=>`<option value="${esc(s.id)}"${s.id===n.schluessel?' selected':''}>${esc(s.name)}</option>`).join('');
   let h=`<div class="karte"><div class="zeile" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">${esc(nwTitel(k,n))}</h2>
-     <div class="zeile"><button class="klein" data-aktion="druckNachweis">Drucken</button><button class="klein danger" data-aktion="nwLoeschen">Löschen</button></div></div>
+     <div class="zeile">${terminWahl}<button class="klein" data-aktion="druckNachweis">Drucken</button>${nt?'<button class="klein danger" data-aktion="ntLoeschen">Nachtermin löschen</button>':'<button class="klein danger" data-aktion="nwLoeschen">Löschen</button>'}</div></div>
+   ${nt?`<p class="ntHinweis">Hier stehen nur Schüler, die beim Haupttermin keine Note haben. Ihre Note zählt für die Halbjahresnote, aber <b>nicht</b> zum Durchschnitt und Notenspiegel der Prüfung. Bewertungsart${n.modus==='aufgaben'?' und Notenschlüssel':''} wie beim Haupttermin; ${n.modus==='aufgaben'?'die BE-Verteilung':(n.modus==='bogen'?'die Gewichtung':'die Noten')} legst du hier eigens fest.</p>`:''}
    <div class="kopf">
-     <label class="feld">Bezeichnung<input data-nwf="titel" value="${esc(n.titel)}" placeholder="${esc(nwTitel(k,{...n,titel:''}))}"></label>
+     ${nt?'':`<label class="feld">Bezeichnung<input data-nwf="titel" value="${esc(n.titel)}" placeholder="${esc(nwTitel(k,{...n,titel:''}))}"></label>`}
      <label class="feld">Geschrieben am<input type="date" data-nwf="geschrieben" value="${esc(n.geschrieben)}"></label>
      <label class="feld">Zurückgegeben am<input type="date" data-nwf="zurueck" value="${esc(n.zurueck)}"></label>
-     <label class="feld">Bewertung<select data-nwf="modus"><option value="aufgaben"${n.modus==='aufgaben'?' selected':''}>Bewertungseinheiten (BE)</option><option value="direkt"${n.modus==='direkt'?' selected':''}>Nur Endnote eintragen</option><option value="bogen"${n.modus==='bogen'?' selected':''}>Bewertungsbogen</option></select></label>
-     ${n.modus==='aufgaben'?`<label class="feld">Notenschlüssel<select data-nwf="schluessel">${schl}</select></label>`:''}
+     ${nt?'':`<label class="feld">Bewertung<select data-nwf="modus"><option value="aufgaben"${n.modus==='aufgaben'?' selected':''}>Bewertungseinheiten (BE)</option><option value="direkt"${n.modus==='direkt'?' selected':''}>Nur Endnote eintragen</option><option value="bogen"${n.modus==='bogen'?' selected':''}>Bewertungsbogen</option></select></label>`}
+     ${n.modus==='aufgaben' && !nt?`<label class="feld">Notenschlüssel<select data-nwf="schluessel">${schl}</select></label>`:''}
    </div>`;
   if(n.modus==='aufgaben'){
     h+=`<div class="aufgabenLeiste"><b>Aufgaben:</b> ${n.aufgaben.length} &nbsp;·&nbsp; <b>Gesamt: ${fmt(be)} BE</b>
@@ -1561,20 +1616,21 @@ function zeigeNwEditor(){
     }
     h+=`</tr>`;
   });
-  if(!sch.length) h+=`<tr><td class="name muted" colspan="99">Keine Schüler im Kurs.</td></tr>`;
+  if(!sch.length) h+=`<tr><td class="name muted" colspan="99">${nt?'Alle Schüler haben beim Haupttermin eine Note.':'Keine Schüler im Kurs.'}</td></tr>`;
   h+=`</tbody></table></div><div id="nwSeite"></div></div>`;
   ed.innerHTML=h;
   zeigeNwSeite();
 }
 function zeigeNwSeite(){
-  const k=kurs(), n=k.nachweise.find(x=>x.id===A.nwId); if(!n) return;
+  const k=kurs(), n=aktNw(k); if(!n) return;
+  const nsTitel = n.nachtermin ? 'Notenspiegel Nachtermin <span class="klein muted" style="font-weight:400">(zählt nicht zum Schnitt der Prüfung)</span>' : 'Notenspiegel';
   if(n.modus==='direkt'){ $('nwSeite').innerHTML=''; return; }
-  if(n.modus==='bogen'){ const sp=C.notenspiegel(rechenNw(n), aktiveSchueler(k).map(s=>s.id)); let h=`<div class="karte" style="padding:14px 16px"><h3>Notenspiegel</h3><table class="schluesselTab"><thead><tr><th>Punkte</th><th>Note</th><th class="r">Anzahl</th></tr></thead><tbody>`;
+  if(n.modus==='bogen'){ const sp=C.notenspiegel(rechenNw(n), nwSchueler(k,n).map(s=>s.id)); let h=`<div class="karte" style="padding:14px 16px"><h3>${nsTitel}</h3><table class="schluesselTab"><thead><tr><th>Punkte</th><th>Note</th><th class="r">Anzahl</th></tr></thead><tbody>`;
     for(let p=15;p>=0;p--) h+=`<tr${notenKlasse(p)?` class="${notenKlasse(p)}"`:''}><td>${p}</td><td>${C.NOTEN_TEXT[p]}</td><td class="r"><b>${sp.anzahl[p]||''}</b></td></tr>`;
     h+=`</tbody></table><div class="kennz"><div>Durchschnitt<b>${sp.schnitt==null?'–':fmt(sp.schnitt,2)}</b></div><div>Teilnehmer<b>${sp.teilnehmer}</b></div></div></div>`; $('nwSeite').innerHTML=h; return; }
-  const RN=rechenNw(n), be=C.gesamtBE(RN), sp=C.notenspiegel(RN, aktiveSchueler(k).map(s=>s.id));
+  const RN=rechenNw(n), be=C.gesamtBE(RN), sp=C.notenspiegel(RN, nwSchueler(k,n).map(s=>s.id));
   const tab = n.modus==='aufgaben' ? C.beTabelle(be, RN.schluessel) : null;
-  let h=`<div class="karte" style="padding:14px 16px"><h3>Notenspiegel</h3><table class="schluesselTab"><thead><tr><th>Punkte</th><th>Note</th>${tab?'<th class="r">BE</th>':''}<th class="r">Anzahl</th></tr></thead><tbody>`;
+  let h=`<div class="karte" style="padding:14px 16px"><h3>${nsTitel}</h3><table class="schluesselTab"><thead><tr><th>Punkte</th><th>Note</th>${tab?'<th class="r">BE</th>':''}<th class="r">Anzahl</th></tr></thead><tbody>`;
   for(let p=15;p>=0;p--){
     const z=tab?tab[15-p]:null;
     const beTxt = z ? (z.bis!=null && z.bis>=z.ab ? `${fmt(z.ab)} – ${fmt(z.bis)}` : (z.bis==null?`ab ${fmt(z.ab)}`:'–')) : '';
@@ -1585,7 +1641,7 @@ function zeigeNwSeite(){
   $('nwSeite').innerHTML=h;
 }
 $('nwEditor').addEventListener('change', e=>{
-  const el=e.target, k=kurs(), n=k.nachweise.find(x=>x.id===A.nwId); if(!n) return;
+  const el=e.target, k=kurs(), n=aktNw(k); if(!n) return;
   if(el.dataset.bg){
     const b=n.bogen;
     if(el.dataset.bg==='anz'){ const neu=+el.value; b.anz=neu; b.gew=(BOGEN_GEW_STANDARD[neu]||[100]).slice(); toast(`${neu} Teilaufgabe${neu>1?'n':''}, Gewichtung ${b.gew.join(' / ')} %`); }
@@ -1622,14 +1678,14 @@ $('nwEditor').addEventListener('change', e=>{
   }
 });
 function nwNeuBerechnen(alle, sid){
-  const k=kurs(), n=k.nachweise.find(x=>x.id===A.nwId), RN=rechenNw(n);
+  const k=kurs(), n=aktNw(k), RN=rechenNw(n);
   if(alle){ // BE geändert: Kopf + alle Zeilen
     const be=C.gesamtBE(RN);
     const leiste=document.querySelector('#nwEditor .aufgabenLeiste b:nth-of-type(2)'); if(leiste) leiste.textContent=`Gesamt: ${fmt(be)} BE`;
     const th=document.querySelector('#tabNw thead tr:nth-child(2) th:nth-last-child(3)'); if(th) th.textContent=fmt(be);
     document.querySelectorAll('#tabNw input[data-p]').forEach(i=>{ const b=n.aufgaben[+i.dataset.i]; const v=zahl(i.value); i.classList.toggle('zuviel', v!=null&&b!=null&&v>b); });
   }
-  aktiveSchueler(k).forEach(s=>{
+  nwSchueler(k,n).forEach(s=>{
     if(!alle && s.id!==sid) return;
     const r=C.ergebnis(RN, s.id);
     const q=a=>document.querySelector(`#tabNw [data-${a}="${CSS.escape(s.id)}"]`);
@@ -1788,7 +1844,7 @@ function bogenEinstellungenHTML(n){
   <p class="klein" style="margin:10px 0 0">Kriterien je Teilaufgabe: Darstellung 17 %, Reproduktion 33 %, Anwendung 50 % (je 0–15 Punkte). Die Note ist der gerundete Wert des Erstkorrektors. Name antippen öffnet den Bewertungsbogen.</p>`;
 }
 function bogenTabelleHTML(k,n){
-  const b=n.bogen, sch=aktiveSchueler(k), RN=rechenNw(n);
+  const b=n.bogen, sch=nwSchueler(k,n), RN=rechenNw(n);
   let h=`<div id="nwInhalt"><div class="tabWrap"><table class="raster" id="tabNw"><thead><tr><th class="name">Name</th>`;
   for(let a=0;a<b.anz;a++) h+=`<th>A${a+1}<span class="unter">${fmt(b.gew[a])} %</span></th>`;
   h+=`<th>Erstkorr.</th>${b.zweit?'<th>Zweitkorr.</th>':''}<th>Punkte</th><th></th></tr></thead><tbody>`;
@@ -1799,7 +1855,7 @@ function bogenTabelleHTML(k,n){
     h+=`<td class="calc">${e.gesamt==null?(e.irgend?'…':''):fmt2(e.gesamt)}</td>${b.zweit?`<td class="calc">${z.gesamt==null?(z.irgend?'…':''):fmt2(z.gesamt)}</td>`:''}<td class="calc note ${notenKlasse(p)}">${p==null?'':p}</td>
       <td style="padding:0 6px"><button class="klein" data-bogen="${esc(s.id)}">Bogen</button></td></tr>`;
   });
-  if(!sch.length) h+=`<tr><td class="name muted" colspan="99">Keine Schüler im Kurs.</td></tr>`;
+  if(!sch.length) h+=`<tr><td class="name muted" colspan="99">${n.nachtermin?'Alle Schüler haben beim Haupttermin eine Note.':'Keine Schüler im Kurs.'}</td></tr>`;
   h+=`</tbody></table></div><div id="nwSeite"></div></div>`;
   return h;
 }
@@ -1811,10 +1867,10 @@ function oeffneBogen(sid){
   const d=$('dlgBogen'); if(!d.open) d.showModal();
   const f=d.querySelector('input.bgIn'); if(f){ f.focus(); f.select(); }
 }
-function bogenAktuell(){ const k=kurs(), n=k&&k.nachweise.find(x=>x.id===A.nwId); return {k,n}; }
+function bogenAktuell(){ const k=kurs(), n=k&&aktNw(k); return {k,n}; }
 function zeigeBogen(){
   const {k,n}=bogenAktuell(); if(!n) return;
-  const b=n.bogen, sch=aktiveSchueler(k), idx=sch.findIndex(s=>s.id===bogenSid), s=sch[idx];
+  const b=n.bogen, sch=nwSchueler(k,n), idx=sch.findIndex(s=>s.id===bogenSid), s=sch[idx];
   if(!s) return;
   const bw=(n.bw[s.id])||{}, wer=b.zweit?['e','z']:['e'];
   let h=`<div class="bogenKopf"><div><div class="muted klein">${esc(nwTitel(k,n))} · ${esc(k.klasse)} · ${esc(k.fach)}</div><h3 style="margin:2px 0 0">${esc(s.nn)}, ${esc(s.vn)}</h3></div>
@@ -1874,13 +1930,15 @@ $('dlgBogen').addEventListener('keydown', e=>{
 });
 $('dlgBogen').addEventListener('click', e=>{
   const nav=e.target.closest('[data-bgnav]');
-  if(nav){ const {k}=bogenAktuell(), sch=aktiveSchueler(k), i=sch.findIndex(s=>s.id===bogenSid)+Number(nav.dataset.bgnav); if(sch[i]) oeffneBogen(sch[i].id); return; }
+  if(nav){ const {k,n}=bogenAktuell(), sch=nwSchueler(k,n), i=sch.findIndex(s=>s.id===bogenSid)+Number(nav.dataset.bgnav); if(sch[i]) oeffneBogen(sch[i].id); return; }
   if(e.target.closest('[data-bgaktion="schliessen"]')) bogenSchliessen();
   if(e.target.closest('[data-bgaktion="drucken"]')){ const {k,n}=bogenAktuell(); drucken(bogenDruckHTML(k,n,bogenSid)); }
 });
 $('dlgBogen').addEventListener('cancel', e=>{ e.preventDefault(); bogenSchliessen(); });
 function bogenSchliessen(){ $('dlgBogen').close(); bogenSid=null; neuMitFokus(zeigeNwEditor); }
-$('nwEditor').addEventListener('click', e=>{ const b=e.target.closest('[data-bogen]'); if(b) oeffneBogen(b.dataset.bogen); });
+$('nwEditor').addEventListener('click', e=>{
+  const t=e.target.closest('[data-termin]'); if(t){ A.nt = t.dataset.termin==='nt'; zeigeNwEditor(); return; }
+  const b=e.target.closest('[data-bogen]'); if(b) oeffneBogen(b.dataset.bogen); });
 
 /* ---- Druck (A4 quer, wie die Excel-Vorlage) ---- */
 function bogenDruckHTML(k,n,sid){
@@ -1911,8 +1969,8 @@ function bogenDruckHTML(k,n,sid){
     <table style="border:none;width:99%;table-layout:fixed"><colgroup><col style="width:40%"><col></colgroup><tr style="vertical-align:top"><td style="border:none;padding:0 10pt 0 0">${t}</td><td style="border:none;padding:0">${g}</td></tr></table></div>`;
 }
 function bogenAlleDrucken(){
-  const k=kurs(), n=k.nachweise.find(x=>x.id===A.nwId); if(!n) return;
-  const sch=aktiveSchueler(k).filter(s=>C.bogenKorrektor(n,s.id,'e').irgend);
+  const k=kurs(), n=aktNw(k); if(!n) return;
+  const sch=nwSchueler(k,n).filter(s=>C.bogenKorrektor(n,s.id,'e').irgend);
   if(!sch.length){ toast('Noch keine Bögen ausgefüllt.'); return; }
   drucken(sch.map((s,i)=>`<div style="${i?'break-before:page;':''}">${bogenDruckHTML(k,n,s.id)}</div>`).join(''));
 }
@@ -2595,8 +2653,8 @@ function druckKlassenliste(){
   drucken(druckKopf('Klassenliste')+`<table><thead><tr><th>Nr.</th><th class="l">Name</th>${Array.from({length:12},()=>'<th style="width:7%"></th>').join('')}</tr></thead><tbody>${sch.map((s,i)=>`<tr><td>${i+1}</td><td class="l">${esc(s.nn)}, ${esc(s.vn)}</td>${Array.from({length:12},()=>'<td></td>').join('')}</tr>`).join('')}</tbody></table>`);
 }
 function druckNachweis(){
-  const k=kurs(), n=k.nachweise.find(x=>x.id===A.nwId); if(!n) return;
-  const RN=rechenNw(n), sch=aktiveSchueler(k), sp=C.notenspiegel(RN, sch.map(s=>s.id));
+  const k=kurs(), n=aktNw(k); if(!n) return;
+  const RN=rechenNw(n), sch=nwSchueler(k,n), sp=C.notenspiegel(RN, sch.map(s=>s.id));
   let h=druckKopf(nwTitel(k,n))+`<div class="sub">${n.geschrieben?'Geschrieben am '+datumText(n.geschrieben):''}${n.zurueck?' · zurückgegeben am '+datumText(n.zurueck):''} ${n.modus==='aufgaben'?` · Notenschlüssel ${esc(RN.schluessel.name)} · ${fmt(C.gesamtBE(RN))} BE`:(n.modus==='bogen'?` · Bewertungsbogen, Gewichtung ${n.bogen.gew.slice(0,n.bogen.anz).map(fmt).join(' / ')} %`:' · nur Endnote eingetragen')}</div>`;
   if(n.modus==='bogen'){
     h+=`<table><thead><tr><th>Nr.</th><th class="l">Name</th>${Array.from({length:n.bogen.anz},(_,a)=>`<th>A${a+1}</th>`).join('')}<th>Erstkorr.</th>${n.bogen.zweit?'<th>Zweitkorr.</th>':''}<th>Punkte</th></tr></thead><tbody>`;
@@ -2626,13 +2684,23 @@ const AKTIONEN = {
     if(v.art==='zusatz'){ const name=($('pkName')&&$('pkName').value.trim())||'Wahlpflichtfach'; D.zusatz=(D.zusatz||[]).filter(z=>z.name!==name); D.zusatz.push({name, schuljahr:$('pkSchuljahr').value.trim(), erstellt:heuteISO(), klassen:verwaltungListen(v), bezeichnungen:(!v.gruppen&&v.bez)||undefined}); geaendert(); toast(`Zusatzpaket „${name}“ auf diesem Gerät übernommen.`); einrichtungWeiter(); return; }
     D.stamm={schuljahr:$('pkSchuljahr').value.trim(), erstellt:heuteISO(), klassen:v.klassen}; geaendert(); toast('Klassen auf diesem Gerät übernommen.'); einrichtungWeiter(); },
   schuelerNeu, schluesselNeu: ()=>schluesselBearbeiten(null),
-  aufgabePlus: ()=>{ const n=kurs().nachweise.find(x=>x.id===A.nwId); n.aufgaben.push(null); geaendert(); zeigeNwEditor(); },
-  aufgabeMinus: async ()=>{ const n=kurs().nachweise.find(x=>x.id===A.nwId); const i=n.aufgaben.length-1;
+  aufgabePlus: ()=>{ const n=aktNw(); n.aufgaben.push(null); geaendert(); zeigeNwEditor(); },
+  aufgabeMinus: async ()=>{ const n=aktNw(); const i=n.aufgaben.length-1;
     const hatWerte=Object.values(n.werte).some(w=>w[i]!=null);
     if(hatWerte && !(await frage('Aufgabe entfernen?',`In Aufgabe ${i+1} sind schon Punkte eingetragen. Diese werden gelöscht.`,'Entfernen','Abbrechen',true))) return;
     n.aufgaben.pop(); Object.values(n.werte).forEach(w=>{ w.length=Math.min(w.length,n.aufgaben.length); }); geaendert(); zeigeNwEditor(); },
-  nwLoeschen: async ()=>{ const k=kurs(), n=k.nachweise.find(x=>x.id===A.nwId);
-    if(!(await frage('Leistungsnachweis löschen?',`„${nwTitel(k,n)}“ mit allen eingetragenen Punkten wird gelöscht.`,'Löschen','Abbrechen',true))) return;
+  ntAnlegen: ()=>{ const k=kurs(), n=hauptNw(k); if(!n || n.nt) return;
+    n.nt={ geschrieben:'', zurueck:'', aufgaben:(n.aufgaben||[null]).map(()=>null), werte:{}, direkt:{} };
+    if(n.modus==='bogen' && n.bogen) n.nt.bogen={ anz:n.bogen.anz, gew:n.bogen.gew.slice(), zweit:!!n.bogen.zweit };
+    A.nt=true; geaendert(); zeigeNachweise();
+    const anz=nwSchueler(k,ntSicht(n)).length;
+    toast(anz ? `Nachtermin angelegt für ${anz} Schüler ohne Note beim Haupttermin.` : 'Nachtermin angelegt. Im Moment haben alle Schüler beim Haupttermin eine Note.'); },
+  ntLoeschen: async ()=>{ const k=kurs(), n=hauptNw(k); if(!n || !n.nt) return;
+    const mit=aktiveSchueler(k).filter(s=>ntHatDaten(n.nt,s.id)).length;
+    if(!(await frage('Nachtermin löschen?', mit ? `Beim Nachtermin von „${nwTitel(k,n)}“ sind für ${mit} Schüler Ergebnisse eingetragen. Sie werden gelöscht, und diese Noten fehlen danach in der Halbjahresnote.` : `Der Nachtermin von „${nwTitel(k,n)}“ wird gelöscht.`, 'Löschen','Abbrechen',true))) return;
+    delete n.nt; A.nt=false; geaendert(); zeigeNachweise(); },
+  nwLoeschen: async ()=>{ const k=kurs(), n=hauptNw(k);
+    if(!(await frage('Leistungsnachweis löschen?',`„${nwTitel(k,n)}“ mit allen eingetragenen Punkten${n.nt?' (auch des Nachtermins)':''} wird gelöscht.`,'Löschen','Abbrechen',true))) return;
     k.nachweise=k.nachweise.filter(x=>x!==n);
     A.nwId=null; geaendert(); zeigeNachweise(); },
   kursBearbeiten: async ()=>{ const k=kurs();
